@@ -19,4 +19,7 @@ PS:由于目前NPC还没有加攻击功能，用户只能通过踩到陷阱死�
 链接：https://pan.baidu.com/s/1revX_TXnvRyZ8gOXYgjIpw 
 提取码：1024
 
-包含演示视频，Windows打包文件
+包含演示视频，Windows打包文件以及apk
+
+<u>*APK在部分安卓10机型下SaveGame没有权限，暂时该问题还没解决*</u>
+
