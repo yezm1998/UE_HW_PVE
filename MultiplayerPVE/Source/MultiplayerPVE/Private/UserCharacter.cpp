@@ -13,14 +13,28 @@ AUserCharacter::AUserCharacter()
  	// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
 	bDied = false;
-	Health = 100;
+	Health = 100.0f;
+	bFiring = false;
+	bAiming = false;
+	DefaultHealth = 100.0f;
 	//CameraComp->bUsePawnControlRotation = true;
 	SpringArmComp = CreateDefaultSubobject<USpringArmComponent>(TEXT("SpringArmComp"));
 	SpringArmComp->bUsePawnControlRotation = true;
 	SpringArmComp->SetupAttachment(RootComponent);
 	CameraComp = CreateDefaultSubobject<UCameraComponent>(TEXT("CameraComp"));
 	CameraComp->SetupAttachment(SpringArmComp);
-	WeaponSocket = "WeaponSocket";
+
+	FollowCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("FollowCamera"));
+	SpringArmComp2 = CreateDefaultSubobject<USpringArmComponent>(TEXT("SpringArmComp2"));
+	SpringArmComp2->bUsePawnControlRotation = true; 
+	SpringArmComp2->SetupAttachment(RootComponent);
+	FollowCamera->SetupAttachment(SpringArmComp2);
+
+	WeaponSocket.Add("HandSocket");
+	WeaponSocket.Add("BackSocket");
+	CurrentWeapon = 0;
+	WeaponArr.Init(nullptr, 2);
+
 	//HealthComponent = CreateDefaultSubobject<USHealthComponent>(TEXT("HealthComponent"));
 	//SpringArmComp = CreateDefaultSubobject<USpringArmComponent>(TEXT("SpringArmComp"));
 	UE_LOG(LogTemp, Log, TEXT("BUild"));
@@ -33,13 +47,20 @@ void AUserCharacter::BeginPlay()
 	GetMovementComponent()->GetNavAgentPropertiesRef().bCanCrouch = true;
 	FActorSpawnParameters SpawnParam;
 	SpawnParam.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
-	MyWeapon = GetWorld()->SpawnActor<AUserWeapon>(StarterWeaponClass,FVector::ZeroVector,FRotator::ZeroRotator,SpawnParam);
-	if (MyWeapon) {
-		MyWeapon->SetOwner(this);
-		MyWeapon->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, WeaponSocket);
+	WeaponArr[0] = GetWorld()->SpawnActor<AUserWeapon>(StarterWeaponClass[0],FVector::ZeroVector,FRotator::ZeroRotator,SpawnParam);
+	if (WeaponArr[0]) {
+		WeaponArr[0]->SetOwner(this);
+		WeaponArr[0]->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, WeaponSocket[0]);
 	}
+	WeaponArr[1] = GetWorld()->SpawnActor<AUserWeapon>(StarterWeaponClass[1], FVector::ZeroVector, FRotator::ZeroRotator, SpawnParam);
+	if (WeaponArr[1]) {
+		WeaponArr[1]->SetOwner(this);
+		WeaponArr[1]->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, WeaponSocket[1]);
+	}
+	MyWeapon = WeaponArr[0];
 	this->OnTakeAnyDamage.AddDynamic(this,&AUserCharacter::HandleDamage);
-	//HealthComponent->Add
+	DefaultFOV = CameraComp->FieldOfView;
+	ZoomFOV = 60;
 }
 
 // ÒÆ¶¯
@@ -63,16 +84,81 @@ void AUserCharacter::EndCrouch()
 	UnCrouch();
 }
 
-void AUserCharacter::Fire()
+void AUserCharacter::StartFire()
 {
-	MyWeapon->Fire();
+	
+	MyWeapon->StartFire();
+	//bFiring = true;
+}
+
+void AUserCharacter::StopFire()
+{
+	MyWeapon->StopFire();
+	bFiring = false;
+}
+
+void AUserCharacter::StartAim()
+{
+	//UE_LOG(LogTemp, Log, TEXT("start"));
+	bAiming = true;
+	bNeedToZoom = true;
+	//CameraComp->SetFieldOfView(ZoomFOV);
+	FollowCamera->SetActive(true);
+	CameraComp->SetActive(false);
+	//this->bUseControllerRotationYaw = false;
+
+}
+
+void AUserCharacter::StopAim()
+{
+	bNeedToZoom = false;
+	bAiming = false;
+	//CameraComp->SetFieldOfView(DefaultFOV);
+	FollowCamera->SetActive(false);
+	CameraComp->SetActive(true);
+	//this->bUseControllerRotationYaw = true;
+
+}
+
+void AUserCharacter::SartLookAround()
+{
+	//UE_LOG(LogTemp, Log, TEXT("start look around "));
+	bLooking = true;
+	this->bUseControllerRotationYaw = false;
+	//this->bUseControllerRotationPitch = false;
+}
+
+void AUserCharacter::StopLookAround()
+{
+	//UE_LOG(LogTemp, Log, TEXT("stop look around "));
+	bLooking = false;
+	this->bUseControllerRotationYaw = true;
+	//this->bUseControllerRotationPitch = true;
+
+}
+
+
+void AUserCharacter::SwitchWeapon()
+{
+	if (!CurrentWeapon) {
+		WeaponArr[1]->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, WeaponSocket[0]);
+		WeaponArr[0]->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, WeaponSocket[1]);
+	}
+	else {
+		WeaponArr[1]->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, WeaponSocket[1]);
+		WeaponArr[0]->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, WeaponSocket[0]);
+	}
+	//PlaySwitchAnimation();
+	CurrentWeapon = 1 - CurrentWeapon;
+	MyWeapon = WeaponArr[CurrentWeapon];
+	
 }
 
 // Called every frame
 void AUserCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-
+	
 }
 
 float AUserCharacter::GetHealth()
@@ -108,7 +194,14 @@ void AUserCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompo
 	PlayerInputComponent->BindAction("Crouch", IE_Pressed, this, &AUserCharacter::BeginCrouch);
 	PlayerInputComponent->BindAction("UnCrouch", IE_Released, this, &AUserCharacter::EndCrouch);
 	PlayerInputComponent->BindAction("Jump", IE_Pressed, this, &AUserCharacter::Jump);
-	//if(Weapon)
-	PlayerInputComponent->BindAction("Fire", IE_Pressed,this, &AUserCharacter::Fire);
+
+	PlayerInputComponent->BindAction("Fire", IE_Pressed,this, &AUserCharacter::StartFire);
+	PlayerInputComponent->BindAction("Fire", IE_Released, this, &AUserCharacter::StopFire);
+	PlayerInputComponent->BindAction("Aim", IE_Pressed, this, &AUserCharacter::StartAim);
+	PlayerInputComponent->BindAction("Aim", IE_Released, this, &AUserCharacter::StopAim);
+	PlayerInputComponent->BindAction("FreePerspective", IE_Pressed, this, &AUserCharacter::SartLookAround);
+	PlayerInputComponent->BindAction("FreePerspective", IE_Released, this, &AUserCharacter::StopLookAround);
+	//PlayerInputComponent->BindAction("SwitchWeapon", IE_Pressed, this, &AUserCharacter::SwitchWeapon);
+	//PlayerInputComponent->BindAction("SwitchWeapon", IE_Released, this, &AUserCharacter::StopLookAround);
 }
 

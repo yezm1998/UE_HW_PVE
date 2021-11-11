@@ -4,11 +4,15 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "WeaponType.h"
 #include "UserWeapon.generated.h"
 class USkeletalMeshComponent;
 class USphereComponent;
 class UDamageType;
 class UParticleSystem;
+
+class UAudioComponent;
+
 UCLASS()
 class MULTIPLAYERPVE_API AUserWeapon : public AActor
 {
@@ -27,6 +31,8 @@ protected:
 	float Damage;
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Fire")
 		float ShootRange;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon")
+		WeaponType ThisWeaponType;
 	UPROPERTY(EditAnywhere, Category = "Fire")
 		USphereComponent* MuzzlePosition;
 	UPROPERTY(EditDefaultsOnly,BlueprintReadOnly,Category="Weapon")
@@ -39,10 +45,27 @@ protected:
 		UParticleSystem* HitEffect;
 	UPROPERTY(EditDefaultsOnly, Category = "Fire")
 		TSubclassOf<UCameraShake> FireShake;
+	UFUNCTION(BlueprintImplementableEvent, Category = "FireAnimation")
+		void DaggerFire();
+	UFUNCTION(BlueprintImplementableEvent, Category = "FireAnimation")
+		void GunFire();
+	UFUNCTION(BlueprintImplementableEvent, Category = "FireAnimation")
+		void GrenadeFire();
+	UPROPERTY(VisibleAnywhere, Category = "Sound")
+		UAudioComponent* AudioComp;
+	virtual void Fire();
+	FTimerHandle FireTimer;
+	float RateOfFire;
 public:	
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
 	//void SetupPlayerInputComponent(UInputComponent* PlayerInputComponent);
+	//UFUNCTION(BlueprintCallable, Category = "Weapon")
+		
+	//自动开火
 	UFUNCTION(BlueprintCallable, Category = "Weapon")
-		virtual void Fire();
+		virtual void StartFire();
+	//停止开火
+	UFUNCTION(BlueprintCallable, Category = "Weapon")
+		void StopFire();
 };
