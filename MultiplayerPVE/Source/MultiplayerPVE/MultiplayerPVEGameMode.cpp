@@ -37,7 +37,7 @@ bool AMultiplayerPVEGameMode::CheckAnyPlayerAlive()
 		if (PC && PC->GetPawn()) {
 			APawn* MyPawn = PC->GetPawn();
 			AUserCharacter* Player=Cast<AUserCharacter>(MyPawn);
-			if (ensure(Player) && Player->GetHealth() > 0) {
+			if (ensure(Player) && Player->GetHealth() > 0) { //
 				//UE_LOG(LogTemp, Log, TEXT("Health %f"), Player->GetHealth());
 				return true;
 			}

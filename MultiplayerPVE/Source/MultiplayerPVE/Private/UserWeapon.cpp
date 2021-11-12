@@ -8,7 +8,8 @@
 #include "Kismet/GameplayStatics.h"
 #include "TimerManager.h"
 #include "Components/AudioComponent.h"
-
+#include "Components/SkeletalMeshComponent.h"
+#include "Particles/ParticleSystemComponent.h"
 // Sets default values
 AUserWeapon::AUserWeapon()
 {
@@ -20,6 +21,7 @@ AUserWeapon::AUserWeapon()
 	MuzzlePosition->SetupAttachment(MeshComponent);
 	AudioComp = CreateDefaultSubobject<UAudioComponent>(TEXT("AudioComp"));
 	AudioComp->SetupAttachment(RootComponent);
+
 	ShootRange = 500.0;
 	Damage = 25;
 	RateOfFire = 300;
@@ -49,14 +51,16 @@ void AUserWeapon::Fire()
 		//Vector3 MuzzlePosition =
 		FVector Rotation = MuzzlePosition->GetForwardVector();
 		FVector EndPosition = MuzzlePosition->GetComponentLocation() + Rotation * ShootRange;
+		FVector TraceEndPoint = EndPosition;
 		if (GetWorld()->LineTraceSingleByChannel(Hit, MuzzlePosition->GetComponentLocation(), EndPosition, ECC_Visibility, QueryParams)) {
 			AActor* HitActor = Hit.GetActor();
 			UGameplayStatics::ApplyPointDamage(HitActor, Damage, Rotation, Hit, MyPawn->GetInstigatorController(), this, DamageType);
 			if (HitEffect) {
 				UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), HitEffect, Hit.ImpactPoint, Hit.ImpactNormal.Rotation());
 			}
+			TraceEndPoint = Hit.ImpactPoint;
 		}
-		DrawDebugLine(GetWorld(), MuzzlePosition->GetComponentLocation(), EndPosition, FColor::White, false, 0.2f, 0, 0.2f);
+		//DrawDebugLine(GetWorld(), MuzzlePosition->GetComponentLocation(), EndPosition, FColor::White, false, 0.2f, 0, 0.2f);
 		if (MuzzleEffect) {
 			UGameplayStatics::SpawnEmitterAttached(MuzzleEffect, MeshComponent, MuzzleSocketName);
 		}
@@ -69,6 +73,13 @@ void AUserWeapon::Fire()
 		}
 		if (!AudioComp->IsPlaying()) {
 			AudioComp->Play();
+		}
+		if (TraceEffect) {
+			FVector MuzzleLoction = MeshComponent->GetSocketLocation(MuzzleSocketName);
+			UParticleSystemComponent* TracerComp= UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), TraceEffect, MuzzleLoction);
+			if (TracerComp) {
+				TracerComp->SetVectorParameter("BeamEnd", TraceEndPoint);
+			}
 		}
 	}
 	else {

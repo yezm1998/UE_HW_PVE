@@ -53,6 +53,8 @@ protected:
 		void GrenadeFire();
 	UPROPERTY(VisibleAnywhere, Category = "Sound")
 		UAudioComponent* AudioComp;
+	UPROPERTY(EditDefaultsOnly, Category = "Fire")
+		UParticleSystem* TraceEffect;
 	virtual void Fire();
 	FTimerHandle FireTimer;
 	float RateOfFire;
