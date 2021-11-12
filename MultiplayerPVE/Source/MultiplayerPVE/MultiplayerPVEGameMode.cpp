@@ -34,7 +34,7 @@ bool AMultiplayerPVEGameMode::CheckAnyPlayerAlive()
 	for (FConstPlayerControllerIterator it=GetWorld()->GetPlayerControllerIterator();it;it++ )
 	{
 		APlayerController* PC = it->Get();
-		if (PC && PC->GetPawn()) {
+		if (PC && PC->GetPawn()) { 
 			APawn* MyPawn = PC->GetPawn();
 			AUserCharacter* Player=Cast<AUserCharacter>(MyPawn);
 			if (ensure(Player) && Player->GetHealth() > 0) { //
