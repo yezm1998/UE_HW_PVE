@@ -11,7 +11,7 @@ UUserHealthComponent::UUserHealthComponent()
 	// off to improve performance if you don't need them.
 	PrimaryComponentTick.bCanEverTick = true;
 	DefaultHealth = 100.0f;
-	SetIsReplicated(true);
+	//SetIsReplicated(true);
 	//SetReplicates(true);
 
 }
