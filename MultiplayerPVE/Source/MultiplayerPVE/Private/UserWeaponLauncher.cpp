@@ -8,7 +8,7 @@
 #include "UserWeaponGrenade.h"
 AUserWeaponLauncher::AUserWeaponLauncher()
 {
-	
+	RateOfFire = 120;
 	ThrowWeaponSocket = "LaunchPoint";
 }
 

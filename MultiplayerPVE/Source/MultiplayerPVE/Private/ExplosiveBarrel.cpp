@@ -6,6 +6,7 @@
 #include "Kismet/GameplayStatics.h"
 #include "PhysicsEngine/RadialForceComponent.h"
 #include "Net/UnrealNetwork.h"
+#include "Components/AudioComponent.h"
 // Sets default values
 AExplosiveBarrel::AExplosiveBarrel()
 {
@@ -21,6 +22,8 @@ AExplosiveBarrel::AExplosiveBarrel()
 	RadialForceComp->bAutoActivate = false;
 	RadialForceComp->bIgnoreOwningActor = true;
 	ExplosionImpulse = 400;
+	AudioComp = CreateDefaultSubobject<UAudioComponent>(TEXT("AudioComp"));
+	AudioComp->SetupAttachment(RootComponent);
 	SetReplicates(true);
 	SetReplicateMovement(true);
 }
@@ -40,11 +43,16 @@ void AExplosiveBarrel::OnHealthChanged(UUserHealthComponent* OwnerHealthComp, fl
 	}
 	if (Health <= 0) {
 		bExplored = true;
-		//OnRep_Expolded();
+		OnRep_Expolded();
 		FVector BoostIntensity = FVector::UpVector * ExplosionImpulse;
 		MeshComp->AddImpulse(BoostIntensity, NAME_None, true);
-		//UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), ExplosionEffect, GetActorLocation());
-		//MeshComp->SetMaterial(0, ExplodedMaterial);
+		UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), ExplosionEffect, GetActorLocation());
+		MeshComp->SetMaterial(0, ExplodedMaterial);
+		if (!AudioComp->IsPlaying()) {
+			AudioComp->Play();
+		}
+		TArray<AActor*> NoActor;
+		UGameplayStatics::ApplyRadialDamage(GetWorld(), 55, GetActorLocation(), 50, DamageType1, NoActor, this, nullptr, true, ECC_Pawn);
 		RadialForceComp->FireImpulse();
 	}
 

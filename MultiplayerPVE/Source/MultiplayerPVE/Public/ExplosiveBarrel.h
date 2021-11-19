@@ -10,6 +10,7 @@ class UUserHealthComponent;
 class UStaticMeshComponent;
 class URadialForceComponent;
 class UParticleSystem;
+class UDamageType;
 UCLASS()
 class MULTIPLAYERPVE_API AExplosiveBarrel : public AActor
 {
@@ -28,7 +29,10 @@ protected:
 		UStaticMeshComponent* MeshComp;
 	UPROPERTY(VisibleAnywhere, Category = "Components")
 		URadialForceComponent* RadialForceComp;
-
+	UPROPERTY(EditDefaultsOnly, Category = "Sound")
+		class UAudioComponent* AudioComp;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon")
+		TSubclassOf<UDamageType> DamageType1;
 	UFUNCTION()
 		void OnHealthChanged(UUserHealthComponent* OwnerHealthComp, float Health, float Damage, const class UDamageType* DamageType, class AController* InstigatedBy, AActor* DamageCauser);
 	UPROPERTY(ReplicatedUsing=OnRep_Expolded)

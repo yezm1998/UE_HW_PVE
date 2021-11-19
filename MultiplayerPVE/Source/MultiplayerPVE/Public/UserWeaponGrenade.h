@@ -9,7 +9,7 @@ class UStaticMeshComponent;
 class URadialForceComponent;
 class UParticleSystem;
 class USphereComponent;
-
+class UDamageType;
 /**
  * 
  */
@@ -29,6 +29,8 @@ protected:
 		USkeletalMeshComponent* MeshComp;
 	UPROPERTY(VisibleAnywhere, Category = "Components")
 		URadialForceComponent* RadialForceComp;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon")
+		TSubclassOf<UDamageType> DamageType;
 	UPROPERTY(ReplicatedUsing = OnRep_Expolded)
 		bool bExplored;
 	UFUNCTION()
@@ -39,6 +41,8 @@ protected:
 		UParticleSystem* ExplosionEffect;
 	UPROPERTY(EditDefaultsOnly, Category = "FX")
 		UMaterialInterface* ExplodedMaterial;
+	UPROPERTY(EditDefaultsOnly, Category = "Sound")
+		class UAudioComponent* AudioComp;
 	bool bThrow;
 	virtual void BeginPlay() override;
 	void ExploreEffect();

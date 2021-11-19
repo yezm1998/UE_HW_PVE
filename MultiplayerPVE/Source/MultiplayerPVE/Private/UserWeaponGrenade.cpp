@@ -8,6 +8,8 @@
 #include "GameFramework/ProjectileMovementComponent.h" 
 #include "Components/SphereComponent.h"
 #include "Components/SkeletalMeshComponent.h"
+#include "Components/AudioComponent.h"
+
 AUserWeaponGrenade::AUserWeaponGrenade()
 {
 	PrimaryActorTick.bCanEverTick = true;
@@ -26,6 +28,8 @@ AUserWeaponGrenade::AUserWeaponGrenade()
 	RadialForceComp->bAutoActivate = false;
 	RadialForceComp->bIgnoreOwningActor = true;
 	ExplosionImpulse = 400;
+	AudioComp = CreateDefaultSubobject<UAudioComponent>(TEXT("AudioComp"));
+	AudioComp->SetupAttachment(RootComponent);
 	SetReplicates(true);
 	SetReplicateMovement(true);
 	/*SphereComp->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
@@ -72,6 +76,11 @@ void AUserWeaponGrenade::ExploreEffect()
 	UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), ExplosionEffect, GetActorLocation());
 	MeshComp->SetMaterial(0, ExplodedMaterial);
 	RadialForceComp->FireImpulse();
+	if (!AudioComp->IsPlaying()) {
+		AudioComp->Play();
+	}
+	TArray<AActor*> NoActor;
+	UGameplayStatics::ApplyRadialDamage(GetWorld(), 55, GetActorLocation(), 50, DamageType, NoActor,this,nullptr,true,ECC_Pawn);
 	SetLifeSpan(5.0f);
 }
 
@@ -99,8 +108,6 @@ void AUserWeaponGrenade::Tick(float DeltaTime)
 	Super::Tick(DeltaTime);
 	if (!bExplored && bOverlap && GetVelocity().Size() < 100)
 	{
-	//	/*FString message = FString::Printf(TEXT("%f m.s"), GetVelocity().Size());
-	//	GEngine->AddOnScreenDebugMessage(-1, 1.0f, FColor::Black, message);*/
 		ExploreEffect();
 	}
 }
