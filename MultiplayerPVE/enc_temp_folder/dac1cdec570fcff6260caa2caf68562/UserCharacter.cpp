@@ -44,7 +44,7 @@ AUserCharacter::AUserCharacter()
 	WeaponArr.Init(nullptr, 2);
 
 	HealthComp = CreateDefaultSubobject<UUserHealthComponent>("HealthComp");
-	//HealthComp->SetIsReplicated(true);
+	HealthComp->SetIsReplicated(true);
 	//HealthComponent = CreateDefaultSubobject<USHealthComponent>(TEXT("HealthComponent"));
 	//SpringArmComp = CreateDefaultSubobject<USpringArmComponent>(TEXT("SpringArmComp"));
 	UE_LOG(LogTemp, Log, TEXT("BUild"));
