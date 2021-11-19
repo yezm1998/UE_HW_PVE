@@ -8,6 +8,8 @@
 class UCameraComponent;
 class USpringArmComponent;
 class AUserWeapon;
+class UUserHealthComponent;
+class AUserWeaponGrenade;
 //用户类;
 UCLASS()
 class MULTIPLAYERPVE_API AUserCharacter : public ACharacter
@@ -17,12 +19,17 @@ class MULTIPLAYERPVE_API AUserCharacter : public ACharacter
 public:
 	// Sets default values for this character's properties
 	AUserCharacter();
-
+	
 protected:
 	// Called when the game starts or when spawned
+	//用户名字
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Components")
+		FString UserName = "111";
+
+
 	virtual void BeginPlay() override;
-	UFUNCTION()
-		void HandleDamage(AActor* DamagedActor, float Damage, const class UDamageType* DamageType, class AController* InstigatedBy, AActor* DamageCauser);
+	/*移动相关*/
+	
 	//前进
 	void MoveForward(float Value);
 	//右转
@@ -33,7 +40,13 @@ protected:
 	//起
 	UFUNCTION()
 	void EndCrouch();
+
+
+
+	/*武器相关*/
 	//开火——连续开火
+	//UFUNCTION()
+		//void HandleDamage(AActor* DamagedActor, float Damage, const class UDamageType* DamageType, class AController* InstigatedBy, AActor* DamageCauser);
 	UFUNCTION(BlueprintCallable, Category = "Weapon")
 	void StartFire();
 	UFUNCTION(BlueprintCallable, Category = "Weapon")
@@ -42,6 +55,45 @@ protected:
 	void StopAim();
 	void SartLookAround();
 	void StopLookAround();
+	
+	//当前使用武器
+	UPROPERTY(Replicated,VisibleAnywhere, BlueprintReadWrite, Category = "Components")
+		AUserWeapon* MyWeapon;
+	//武器基类
+	UPROPERTY(EditDefaultsOnly, Category = "Weapon")
+		TSubclassOf<AUserWeapon> StarterWeaponClass[2];
+	UPROPERTY(EditDefaultsOnly, Category = "Weapon")
+		TSubclassOf<AUserWeaponGrenade> StarterThrowWeaponClass;
+	//是否开火
+	UPROPERTY(Replicated, EditDefaultsOnly, BlueprintReadWrite, Category = "Components")
+		bool bFiring;
+	//是否瞄准
+	UPROPERTY(Replicated, EditDefaultsOnly, BlueprintReadWrite, Category = "Components")
+		bool bAiming;
+	//是否环视
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Components")
+		bool bLooking;
+	//开镜
+	bool bNeedToZoom;
+	float ZoomFOV;
+	float DefaultFOV;
+	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadWrite, Category = "Components")
+		TArray<AUserWeapon*>  WeaponArr;
+	UPROPERTY(Replicated)
+		int64 CurrentWeapon;
+	TArray<FName>  WeaponSocket;
+	//切换武器
+	UFUNCTION(BlueprintCallable, Category = "Weapon")
+		void SwitchWeapon();
+	void StartThrow();
+	void EndThrow();
+	AUserWeaponGrenade* Grenade;
+	//播放武器蒙太奇动画
+	void PlayAnimationByWeapon(bool Play);
+	AUserWeapon* NewWeapon;
+
+
+	/*摄像头*/
 	UPROPERTY(VisibleAnywhere, Category = "CameraComponents")
 		USpringArmComponent* SpringArmComp2;
 	//第一人称镜头
@@ -52,46 +104,36 @@ protected:
 	UCameraComponent* CameraComp;
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "CameraComponents")
 	USpringArmComponent* SpringArmComp;
-	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Components")
-		TArray<AUserWeapon*>  WeaponArr;
-	//当前使用武器
-	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Components")
-		AUserWeapon*  MyWeapon;
-	//武器基类
-	UPROPERTY(EditDefaultsOnly, Category = "Weapon")
-	TSubclassOf<AUserWeapon> StarterWeaponClass[2];
-	//是否死亡
-	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Components")
-		bool bDied;
-	//是否开火
-	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Components")
-		bool bFiring;
-	//是否瞄准
-	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Components")
-		bool bAiming;
-	//是否环视
-	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Components")
-		bool bLooking;
-	//开镜
-	bool bNeedToZoom;
-	float ZoomFOV;
-	float DefaultFOV;
+	
+	/*生命值*/
 	//生命值
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	/*UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 		float Health;
-	float DefaultHealth;
-	TArray<FName>  WeaponSocket;
-	//用户名字
-	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Components")
-	FString UserName="111";
-	UFUNCTION(BlueprintCallable,Category="Weapon")
-	void SwitchWeapon();
-	int64 CurrentWeapon;
+	float DefaultHealth;*/
+	//是否死亡
+	UPROPERTY(Replicated, EditDefaultsOnly, BlueprintReadWrite, Category = "Components")
+		bool bDied;
+	UUserHealthComponent* HealthComp;
+	UFUNCTION()
+	void OnHealthChanged(UUserHealthComponent* OwnerHealthComp, float Health, float Damage, const class UDamageType* DamageType, class AController* InstigatedBy, AActor* DamageCauser);
+
+	/*脚步效果*/
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Fire")
+		UMaterialInterface* DefaultFloorEffect;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Fire")
+		UMaterialInterface* WaterFloorEffect;
+	UFUNCTION(BlueprintCallable,Category="FootEffect")
+		void WalkingEffect(FVector FootPosition);
 public:	
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
+	UFUNCTION(BlueprintCallable,Category="Health")
 	float GetHealth();
 	// Called to bind functionality to input
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
-
+	virtual FVector GetPawnViewLocation() const override;
+	//装备新武器
+	UFUNCTION()
+	void EquippedWeapon(AUserWeapon* ANewWeapon,bool InOverlap);
+	bool bEquip;
 };

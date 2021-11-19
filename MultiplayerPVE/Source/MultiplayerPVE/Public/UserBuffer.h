@@ -18,9 +18,23 @@ public:
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
-
+	//持续时间
+	UPROPERTY(EditDefaultsOnly, Category = "PowerUp")
+		int32 PowerTime;
+	//回复间隔时间
+	UPROPERTY(EditDefaultsOnly, Category = "PowerUp")
+		float PowerInterval;
+	//每一次迭代调用函数
+	UFUNCTION()
+	void OnTickPowerUp();
+	FTimerHandle TimeHandle;
 public:	
-	// Called every frame
-	virtual void Tick(float DeltaTime) override;
-
+	void ActivatePowerUp();
+	UFUNCTION(BlueprintImplementableEvent, Category = "PowerUp")
+		void OnActivated();
+	UFUNCTION(BlueprintImplementableEvent, Category = "PowerUp")
+		void OnExpired();
+	//实现具体power内容
+	UFUNCTION(BlueprintImplementableEvent, Category = "PowerUp")
+		void OnPowerUpTick();
 };

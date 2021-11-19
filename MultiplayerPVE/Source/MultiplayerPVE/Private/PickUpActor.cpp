@@ -4,7 +4,9 @@
 #include "PickUpActor.h"
 #include "Components/SphereComponent.h"
 #include "Components/DecalComponent.h"
+#include "UserBuffer.h"
 // Sets default values
+
 APickUpActor::APickUpActor()
 {
  	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
@@ -23,19 +25,27 @@ APickUpActor::APickUpActor()
 void APickUpActor::BeginPlay()
 {
 	Super::BeginPlay();
-	
+	SpawnPickUpActor();
 }
 
-// Called every frame
-void APickUpActor::Tick(float DeltaTime)
+void APickUpActor::SpawnPickUpActor()
 {
-	Super::Tick(DeltaTime);
+	if (PowerUpClass == nullptr) {
 
+		return;
+	}
+	FActorSpawnParameters SpawnPickParam;
+	SpawnPickParam.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+	PickUpInstance = GetWorld()->SpawnActor<AUserBuffer>(PowerUpClass, GetTransform(), SpawnPickParam);
 }
 
 void APickUpActor::NotifyActorBeginOverlap(AActor* OtherActor)
 {
 	Super::NotifyActorBeginOverlap(OtherActor);
 	UE_LOG(LogTemp, Log, TEXT("overlap"));
+	if (PickUpInstance) {
+		PickUpInstance->ActivatePowerUp();
+		PickUpInstance = nullptr;
+	}
 }
 

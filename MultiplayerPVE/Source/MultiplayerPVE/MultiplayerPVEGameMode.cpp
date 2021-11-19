@@ -7,10 +7,10 @@
 #include "TimerManager.h"
 #include "UserCharacter.h"
 
-
-
+/*
 AMultiplayerPVEGameMode::AMultiplayerPVEGameMode()
 {
+	PlayerStateClass = AUserPlayerState::StaticClass();
 	WaveNumber = 0;
 	TimeWait = 6.0f;
 	GameCountTime = 60;
@@ -84,3 +84,4 @@ void AMultiplayerPVEGameMode::SpawnWaveEnemys()
 	}
 }
 
+*/

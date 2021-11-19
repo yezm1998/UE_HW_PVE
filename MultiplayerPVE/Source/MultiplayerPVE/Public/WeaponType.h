@@ -15,3 +15,9 @@ enum class WeaponType : uint8
            Gun   UMETA(DisplayName="2"),
            Grenade   UMETA(DisplayName="3")
 };
+
+#define SurfaceDefault SurfaceType1
+#define SurfaceFlesh SurfaceType2
+#define FloorDefault SurfaceType3
+#define WaterDefault SurfaceType4
+#define CollisionWeapon ECC_GameTraceChannel1

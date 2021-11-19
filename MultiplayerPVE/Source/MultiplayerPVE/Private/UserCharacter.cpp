@@ -6,17 +6,25 @@
 #include "GameFramework/SpringArmComponent.h"
 #include "GameFramework/PawnMovementComponent.h"
 #include "UserWeapon.h"
+#include "PVEGameModeBase.h"
+#include "Net/UnrealNetwork.h"
+#include "PhysicalMaterials/PhysicalMaterial.h"
+#include "Materials/MaterialInterface.h"
+#include "Kismet/GameplayStatics.h"
+#include "Kismet/KismetMathLibrary.h"
 
+#include "UserWeaponGrenade.h"
+#include "../Components/UserHealthComponent.h"
 // Sets default values
 AUserCharacter::AUserCharacter()
 {
  	// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
 	bDied = false;
-	Health = 100.0f;
+	
 	bFiring = false;
 	bAiming = false;
-	DefaultHealth = 100.0f;
+	bEquip = false;
 	//CameraComp->bUsePawnControlRotation = true;
 	SpringArmComp = CreateDefaultSubobject<USpringArmComponent>(TEXT("SpringArmComp"));
 	SpringArmComp->bUsePawnControlRotation = true;
@@ -32,9 +40,10 @@ AUserCharacter::AUserCharacter()
 
 	WeaponSocket.Add("HandSocket");
 	WeaponSocket.Add("BackSocket");
-	CurrentWeapon = 0;
+	WeaponSocket.Add("ThrowGenade");
 	WeaponArr.Init(nullptr, 2);
 
+	HealthComp = CreateDefaultSubobject<UUserHealthComponent>("HealthComp");
 	//HealthComponent = CreateDefaultSubobject<USHealthComponent>(TEXT("HealthComponent"));
 	//SpringArmComp = CreateDefaultSubobject<USpringArmComponent>(TEXT("SpringArmComp"));
 	UE_LOG(LogTemp, Log, TEXT("BUild"));
@@ -44,23 +53,29 @@ AUserCharacter::AUserCharacter()
 void AUserCharacter::BeginPlay()
 {
 	Super::BeginPlay();
-	GetMovementComponent()->GetNavAgentPropertiesRef().bCanCrouch = true;
-	FActorSpawnParameters SpawnParam;
-	SpawnParam.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
-	WeaponArr[0] = GetWorld()->SpawnActor<AUserWeapon>(StarterWeaponClass[0],FVector::ZeroVector,FRotator::ZeroRotator,SpawnParam);
-	if (WeaponArr[0]) {
-		WeaponArr[0]->SetOwner(this);
-		WeaponArr[0]->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, WeaponSocket[0]);
-	}
-	WeaponArr[1] = GetWorld()->SpawnActor<AUserWeapon>(StarterWeaponClass[1], FVector::ZeroVector, FRotator::ZeroRotator, SpawnParam);
-	if (WeaponArr[1]) {
-		WeaponArr[1]->SetOwner(this);
-		WeaponArr[1]->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, WeaponSocket[1]);
-	}
-	MyWeapon = WeaponArr[0];
-	this->OnTakeAnyDamage.AddDynamic(this,&AUserCharacter::HandleDamage);
+	HealthComp->OnHealthChanged.AddDynamic(this, &AUserCharacter::OnHealthChanged);
 	DefaultFOV = CameraComp->FieldOfView;
 	ZoomFOV = 60;
+	GetMovementComponent()->GetNavAgentPropertiesRef().bCanCrouch = true;
+	if (GetLocalRole() == ROLE_Authority) {
+		FActorSpawnParameters SpawnParam;
+		SpawnParam.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+		WeaponArr[0] = GetWorld()->SpawnActor<AUserWeapon>(StarterWeaponClass[0], FVector::ZeroVector, FRotator::ZeroRotator, SpawnParam);
+		if (WeaponArr[0]) {
+			WeaponArr[0]->SetOwner(this);
+			WeaponArr[0]->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, WeaponSocket[0]);
+		}
+		WeaponArr[1] = GetWorld()->SpawnActor<AUserWeapon>(StarterWeaponClass[1], FVector::ZeroVector, FRotator::ZeroRotator, SpawnParam);
+		if (WeaponArr[1]) {
+			WeaponArr[1]->SetOwner(this);
+			WeaponArr[1]->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, WeaponSocket[1]);
+		}
+		MyWeapon = WeaponArr[0];
+		CurrentWeapon = 0;
+	}
+	
+	//this->OnTakeAnyDamage.AddDynamic(this,&AUserCharacter::HandleDamage);
+	
 }
 
 // 移动
@@ -86,21 +101,35 @@ void AUserCharacter::EndCrouch()
 
 void AUserCharacter::StartFire()
 {
+	//if (GetLocalRole() == ROLE_Authority) {
+	if (MyWeapon) {
+		MyWeapon->StartFire();
+		bFiring = true;
+		PlayAnimationByWeapon(true);
+	}
+			
+	//}
 	
-	MyWeapon->StartFire();
-	//bFiring = true;
 }
 
 void AUserCharacter::StopFire()
 {
-	MyWeapon->StopFire();
-	bFiring = false;
+	//if (GetLocalRole() == ROLE_Authority) {
+	if (MyWeapon) {
+		MyWeapon->StopFire();
+		bFiring = false;
+		PlayAnimationByWeapon(false);
+	}
+			
+	//}
 }
 
 void AUserCharacter::StartAim()
 {
 	//UE_LOG(LogTemp, Log, TEXT("start"));
+	//if (GetLocalRole() == ROLE_Authority) 
 	bAiming = true;
+
 	bNeedToZoom = true;
 	//CameraComp->SetFieldOfView(ZoomFOV);
 	FollowCamera->SetActive(true);
@@ -140,18 +169,107 @@ void AUserCharacter::StopLookAround()
 
 void AUserCharacter::SwitchWeapon()
 {
-	if (!CurrentWeapon) {
-		WeaponArr[1]->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, WeaponSocket[0]);
-		WeaponArr[0]->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, WeaponSocket[1]);
+	//if (GetLocalRole() == ROLE_Authority) {
+		if (!CurrentWeapon) {
+			WeaponArr[1]->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, WeaponSocket[0]);
+			WeaponArr[0]->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, WeaponSocket[1]);
+		}
+		else {
+			WeaponArr[1]->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, WeaponSocket[1]);
+			WeaponArr[0]->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, WeaponSocket[0]);
+		}
+		//PlaySwitchAnimation();
+		CurrentWeapon = 1 - CurrentWeapon;
+		if (GetLocalRole() == ROLE_Authority)
+			MyWeapon = WeaponArr[CurrentWeapon];
+	//}
+}
+
+void AUserCharacter::StartThrow()
+{
+	//bEquip = false;
+	//WeaponArr[CurrentWeapon]->DetachFromActor(FDetachmentTransformRules::KeepWorldTransform);
+	if (NewWeapon) {
+		WeaponArr[CurrentWeapon]->SetOwner(nullptr);
+		WeaponArr[CurrentWeapon]->Detach(UKismetMathLibrary::GetForwardVector(GetControlRotation()), 100);
+		//WeaponArr[CurrentWeapon]->DestroyByUser(this);
+		NewWeapon->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, WeaponSocket[0]);
+		NewWeapon->SetOwner(this);
+		NewWeapon->ShowPickUpInfo(false);
+		WeaponArr[CurrentWeapon] = NewWeapon;
+		MyWeapon = WeaponArr[CurrentWeapon];
+		NewWeapon = nullptr;
+	}
+}
+
+
+
+
+
+void AUserCharacter::PlayAnimationByWeapon(bool Play)
+{
+	MyWeapon->PlayMontage(GetMesh()->GetAnimInstance(), Play);
+}
+
+void AUserCharacter::EquippedWeapon(AUserWeapon* ANewWeapon,bool InOverlap)
+{
+	if (InOverlap) {
+		this->NewWeapon = ANewWeapon;
 	}
 	else {
-		WeaponArr[1]->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, WeaponSocket[1]);
-		WeaponArr[0]->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, WeaponSocket[0]);
+		if (this->NewWeapon == ANewWeapon)
+			this->NewWeapon = nullptr;
 	}
-	//PlaySwitchAnimation();
-	CurrentWeapon = 1 - CurrentWeapon;
-	MyWeapon = WeaponArr[CurrentWeapon];
 	
+}
+
+
+void AUserCharacter::OnHealthChanged(UUserHealthComponent* OwnerHealthComp, float Health, float Damage, const UDamageType* DamageType, AController* InstigatedBy, AActor* DamageCauser)
+{
+	if (Health <= 0 && !bDied) {
+		bDied = true;
+		GetMovementComponent()->StopMovementImmediately();
+		//GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		DetachFromControllerPendingDestroy();
+		SetLifeSpan(2500.0f);
+
+		APVEGameModeBase* GM = Cast<APVEGameModeBase>(GetWorld()->GetAuthGameMode());
+		if (GM) {
+			GM->OnActorKilled.Broadcast(this, DamageCauser, InstigatedBy);
+		}
+	}
+}
+
+//行走脚步贴图和声效
+void AUserCharacter::WalkingEffect(FVector FootPosition)
+{
+	//FootPosition 脚步位置
+	FHitResult Hit;
+	FCollisionQueryParams QueryParams;
+	QueryParams.AddIgnoredActor(this);
+	QueryParams.bReturnPhysicalMaterial = true;
+	FVector EndPosition = FootPosition + FVector::UpVector * -100;
+	if (GetWorld()->LineTraceSingleByChannel(Hit, FootPosition, EndPosition, ECC_Visibility, QueryParams)) {
+		UMaterialInterface* SelectedEffect = nullptr; 
+		EPhysicalSurface SurfaceType = UPhysicalMaterial::DetermineSurfaceType(Hit.PhysMaterial.Get());
+		switch (SurfaceType)
+		{
+		case FloorDefault:
+			UE_LOG(LogTemp, Log, TEXT("floot_default"));
+			SelectedEffect = DefaultFloorEffect;
+			break;
+		case WaterDefault:
+			UE_LOG(LogTemp, Log, TEXT("floot_water"));
+			SelectedEffect = WaterFloorEffect;
+			break;
+		default:
+			SelectedEffect = DefaultFloorEffect;
+			break;
+		}
+		if (SelectedEffect) {
+			UGameplayStatics::SpawnDecalAtLocation(GetWorld(), SelectedEffect, { 10,20,10 }, Hit.ImpactPoint, Hit.ImpactNormal.Rotation(), 5);
+		}
+	}
 }
 
 // Called every frame
@@ -161,11 +279,12 @@ void AUserCharacter::Tick(float DeltaTime)
 	
 }
 
+
 float AUserCharacter::GetHealth()
 {
-	return Health;
+	return HealthComp->GetHealth();
 }
-
+/*
 void AUserCharacter::HandleDamage(AActor* DamagedActor, float Damage, const class UDamageType* DamageType, class AController* InstigatedBy, AActor* DamageCauser) {
 	
 	if (Health<=0 || Damage <= 0) {
@@ -179,10 +298,16 @@ void AUserCharacter::HandleDamage(AActor* DamagedActor, float Damage, const clas
 		//GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 		DetachFromControllerPendingDestroy();
 		SetLifeSpan(5.0f);
+
+		APVEGameModeBase* GM = Cast<APVEGameModeBase>(GetWorld()->GetAuthGameMode());
+		if (GM) {
+			GM->OnActorKilled.Broadcast(this, DamageCauser,InstigatedBy );
+		}
 	}
+    
 		
 }
-
+*/
 // Called to bind functionality to input
 void AUserCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
@@ -201,7 +326,29 @@ void AUserCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompo
 	PlayerInputComponent->BindAction("Aim", IE_Released, this, &AUserCharacter::StopAim);
 	PlayerInputComponent->BindAction("FreePerspective", IE_Pressed, this, &AUserCharacter::SartLookAround);
 	PlayerInputComponent->BindAction("FreePerspective", IE_Released, this, &AUserCharacter::StopLookAround);
-	//PlayerInputComponent->BindAction("SwitchWeapon", IE_Pressed, this, &AUserCharacter::SwitchWeapon);
-	//PlayerInputComponent->BindAction("SwitchWeapon", IE_Released, this, &AUserCharacter::StopLookAround);
+	PlayerInputComponent->BindAction("PickupWeapon", IE_Pressed, this, &AUserCharacter::StartThrow);
+	//PlayerInputComponent->BindAction("PickupWeapon", IE_Released, this, &AUserCharacter::EndThrow);
 }
 
+FVector AUserCharacter::GetPawnViewLocation() const
+{
+	if (CameraComp->IsActive()) {
+		return CameraComp->GetComponentLocation();
+	}
+	else if (FollowCamera->IsActive()) {
+		return FollowCamera->GetComponentLocation();
+	}
+
+	return Super::GetPawnViewLocation();
+}
+
+void AUserCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const 
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+	DOREPLIFETIME(AUserCharacter, MyWeapon);
+	DOREPLIFETIME(AUserCharacter, WeaponArr);
+	DOREPLIFETIME(AUserCharacter, CurrentWeapon);
+	DOREPLIFETIME(AUserCharacter, bDied);
+	DOREPLIFETIME(AUserCharacter, bFiring);
+	DOREPLIFETIME(AUserCharacter, bAiming);
+}

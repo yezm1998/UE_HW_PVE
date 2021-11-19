@@ -8,7 +8,8 @@ AUserBuffer::AUserBuffer()
 {
  	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
-
+	PowerInterval = 0;
+	PowerTime = 0;
 }
 
 // Called when the game starts or when spawned
@@ -18,10 +19,23 @@ void AUserBuffer::BeginPlay()
 	
 }
 
-// Called every frame
-void AUserBuffer::Tick(float DeltaTime)
+void AUserBuffer::OnTickPowerUp()
 {
-	Super::Tick(DeltaTime);
-
+	OnPowerUpTick();
+	if (PowerTime == 0) {
+		OnExpired();
+		GetWorldTimerManager().ClearTimer(TimeHandle);
+	}
+	PowerTime--;
 }
+
+void AUserBuffer::ActivatePowerUp()
+{
+	if (PowerInterval>0) {
+		GetWorldTimerManager().SetTimer(TimeHandle,this,&AUserBuffer::OnTickPowerUp,PowerInterval,true,0);
+		OnActivated();
+	}
+	
+}
+
 

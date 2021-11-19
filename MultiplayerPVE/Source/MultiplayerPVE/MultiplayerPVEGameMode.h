@@ -6,34 +6,37 @@
 #include "GameFramework/GameMode.h"
 #include "MultiplayerPVEGameMode.generated.h"
 
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnActorKilled,AActor*, VictimActor, AActor*, KillerActor);
+
 UCLASS(minimalapi)
 class AMultiplayerPVEGameMode : public AGameMode
 {
-	GENERATED_BODY()
-protected:
-	FTimerHandle TimerHandle_TimeCount;
-	//int64 state;
-	UPROPERTY(VisibleAnywhere,BlueprintReadOnly,Category = "GameMode")
-	float TimeWait;
-	int64 GameCountTime;
-	int64 WaveNumber;
-	int64 WaveEnemyNumber;
-protected:
-	UFUNCTION(BlueprintImplementableEvent,Category="GameMode")
-		void SpawnNewEnemy();
-	UFUNCTION(BlueprintImplementableEvent, Category = "GameMode")
-		void ShowResult();
-	void SpawnWaveEnemys();
-	AMultiplayerPVEGameMode();
-	void PrepareNextWave();
-	void StartWare();
-	void EndWare();
-	bool CheckAnyPlayerAlive();
-	void GameOver();
-public:
-	virtual void StartPlay() override;
-	virtual void Tick(float DeltaTime) override;
-
+GENERATED_BODY()
+//protected:
+//	FTimerHandle TimerHandle_TimeCount;
+//	//int64 state;
+//	UPROPERTY(VisibleAnywhere,BlueprintReadOnly,Category = "GameMode")
+//	float TimeWait;
+//	int64 GameCountTime;
+//	int64 WaveNumber;
+//	int64 WaveEnemyNumber;
+//protected:
+//	UFUNCTION(BlueprintImplementableEvent,Category="GameMode")
+//		void SpawnNewEnemy();
+//	UFUNCTION(BlueprintImplementableEvent, Category = "GameMode")
+//		void ShowResult();
+//	void SpawnWaveEnemys();
+//	AMultiplayerPVEGameMode();
+//	void PrepareNextWave();
+//	void StartWare();
+//	void EndWare();
+//	bool CheckAnyPlayerAlive();
+//	void GameOver();
+//public:
+//	virtual void StartPlay() override;
+//	virtual void Tick(float DeltaTime) override;
+//	UPROPERTY(BlueprintAssignable,Category="GameMode")
+//	FOnActorKilled OnActorKilled;
 };
 
 

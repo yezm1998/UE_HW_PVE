@@ -7,7 +7,7 @@
 #include "PickUpActor.generated.h"
 class USphereComponent;
 class UDecalComponent;
-
+class AUserBuffer;
 UCLASS()
 class MULTIPLAYERPVE_API APickUpActor : public AActor
 {
@@ -24,9 +24,10 @@ protected:
 	USphereComponent* SphereComp;
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	UDecalComponent* DecalComp;
-
+	UPROPERTY(EditDefaultsOnly,Category="PickUpActor")
+	TSubclassOf<AUserBuffer> PowerUpClass;
+	void SpawnPickUpActor();
+	AUserBuffer* PickUpInstance;
 public:	
-	// Called every frame
-	virtual void Tick(float DeltaTime) override;
 	virtual void NotifyActorBeginOverlap(AActor* OtherActor) override;
 };
