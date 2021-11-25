@@ -43,8 +43,11 @@ AUserWeapon::AUserWeapon()
 	BasicDamage = 25;
 	RateOfFire = 300;
 	MuzzleSocketName = TEXT("MuzzleSocket");
-	ThisWeaponType = WeaponType::Dagger;
-	SetReplicates(true);
+	ThisWeaponType = 1;
+	bReplicates = true;
+	bNetUseOwnerRelevancy = true;
+	//SetReplicates(true);
+	//SetReplicateMovement(true);
 	NetUpdateFrequency = 66;
 	MinNetUpdateFrequency = 33;
 	HitScanTrace.FireTime = 0;

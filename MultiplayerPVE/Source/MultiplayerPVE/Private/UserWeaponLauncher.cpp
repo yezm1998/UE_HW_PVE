@@ -6,6 +6,7 @@
 #include "Kismet/KismetMathLibrary.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "UserWeaponGrenade.h"
+#include "Net/UnrealNetwork.h"
 AUserWeaponLauncher::AUserWeaponLauncher()
 {
 	RateOfFire = 120;
@@ -14,6 +15,10 @@ AUserWeaponLauncher::AUserWeaponLauncher()
 
 void AUserWeaponLauncher::Fire()
 {
+	if (GetLocalRole() != ROLE_Authority) {
+		ServerFireLauncher();
+		return;
+	}
 	APawn* MyPawn = Cast<APawn>(GetOwner());
 	if (MyPawn) {
 		StartThrow();
@@ -28,6 +33,7 @@ void AUserWeaponLauncher::StartThrow()
 	SpawnParam.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
 	Grenade = GetWorld()->SpawnActor<AUserWeaponGrenade>(StarterThrowWeaponClass, FVector::ZeroVector, FRotator::ZeroRotator, SpawnParam);
 	Grenade->AttachToComponent(MeshComponent, FAttachmentTransformRules::SnapToTargetIncludingScale, ThrowWeaponSocket);
+	Grenade->SetOwner(this->GetOwner());
 }
 
 void AUserWeaponLauncher::EndThrow(FRotator FV)
@@ -36,4 +42,28 @@ void AUserWeaponLauncher::EndThrow(FRotator FV)
 	
 	Grenade->Throw(UKismetMathLibrary::GetForwardVector(FV), 300);
 	Grenade = nullptr;
+}
+
+
+void AUserWeaponLauncher::ServerFireLauncher_Implementation()
+{
+	APawn* MyPawn = Cast<APawn>(GetOwner());
+	if (MyPawn) {
+		StartThrow();
+		EndThrow(MyPawn->GetControlRotation());
+		//Cast<AUserCharacter>(MyPawn)->PlayAnimationByWeapon();
+	}
+	//Fire();
+}
+
+bool AUserWeaponLauncher::ServerFireLauncher_Validate()
+{
+	return true;
+}
+
+void AUserWeaponLauncher::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+	DOREPLIFETIME(AUserWeaponLauncher, Grenade);
+	
 }

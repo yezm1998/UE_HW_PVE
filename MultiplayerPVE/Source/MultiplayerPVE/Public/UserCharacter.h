@@ -77,21 +77,29 @@ protected:
 	bool bNeedToZoom;
 	float ZoomFOV;
 	float DefaultFOV;
-	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadWrite, Category = "Components")
+	UPROPERTY(Replicated,VisibleAnywhere, BlueprintReadWrite, Category = "Components")//Replicated
 		TArray<AUserWeapon*>  WeaponArr;
-	UPROPERTY(Replicated)
+	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadWrite, Category="Weapon")//
 		int64 CurrentWeapon;
 	TArray<FName>  WeaponSocket;
 	//切换武器
 	UFUNCTION(BlueprintCallable, Category = "Weapon")
 		void SwitchWeapon();
+	UFUNCTION(BlueprintCallable, Server, Reliable, WithValidation)
+		void ServerSwitch();
+	UFUNCTION(Server, Reliable)
+		void ServerPickUp();
 	void StartThrow();
 	void EndThrow();
 	AUserWeaponGrenade* Grenade;
 	//播放武器蒙太奇动画
 	void PlayAnimationByWeapon(bool Play);
+	UPROPERTY(Replicated)
 	AUserWeapon* NewWeapon;
-
+	UFUNCTION(BlueprintImplementableEvent, Category = "SniperWeapon")
+		void Sniper();
+	UFUNCTION(BlueprintImplementableEvent, Category = "SniperWeapon")
+		void UnSniper();
 
 	/*摄像头*/
 	UPROPERTY(VisibleAnywhere, Category = "CameraComponents")
@@ -107,16 +115,18 @@ protected:
 	
 	/*生命值*/
 	//生命值
-	/*UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
-		float Health;
-	float DefaultHealth;*/
+	/*UPROPERTY(Replicated,VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+		float Health;*/
+	//float DefaultHealth;
 	//是否死亡
 	UPROPERTY(Replicated, EditDefaultsOnly, BlueprintReadWrite, Category = "Components")
 		bool bDied;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	UUserHealthComponent* HealthComp;
 	UFUNCTION()
 	void OnHealthChanged(UUserHealthComponent* OwnerHealthComp, float Health, float Damage, const class UDamageType* DamageType, class AController* InstigatedBy, AActor* DamageCauser);
-
+	//重生
+	void WaitForReborn();
 	/*脚步效果*/
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Fire")
 		UMaterialInterface* DefaultFloorEffect;

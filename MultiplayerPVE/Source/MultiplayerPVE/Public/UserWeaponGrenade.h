@@ -35,6 +35,8 @@ protected:
 		bool bExplored;
 	UFUNCTION()
 		void OnRep_Expolded();
+	UFUNCTION(Server, Reliable)
+		void ServerExplore();
 	UPROPERTY(EditDefaultsOnly, Category = "FX")
 		float ExplosionImpulse;
 	UPROPERTY(EditDefaultsOnly, Category = "FX")
@@ -43,11 +45,13 @@ protected:
 		UMaterialInterface* ExplodedMaterial;
 	UPROPERTY(EditDefaultsOnly, Category = "Sound")
 		class UAudioComponent* AudioComp;
+	UPROPERTY(Replicated)
 	bool bThrow;
 	virtual void BeginPlay() override;
 	void ExploreEffect();
 	UFUNCTION()
 	void OnOverlapBegin(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
+	UPROPERTY(Replicated)
 	bool bOverlap;
 public:
 	UFUNCTION()

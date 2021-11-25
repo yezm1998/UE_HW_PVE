@@ -12,7 +12,7 @@
 #include "Materials/MaterialInterface.h"
 #include "Kismet/GameplayStatics.h"
 #include "Kismet/KismetMathLibrary.h"
-
+#include "UserPlayerState.h"
 #include "UserWeaponGrenade.h"
 #include "../Components/UserHealthComponent.h"
 // Sets default values
@@ -37,14 +37,16 @@ AUserCharacter::AUserCharacter()
 	SpringArmComp2->bUsePawnControlRotation = true; 
 	SpringArmComp2->SetupAttachment(RootComponent);
 	FollowCamera->SetupAttachment(SpringArmComp2);
-
+	
 	WeaponSocket.Add("HandSocket");
 	WeaponSocket.Add("BackSocket");
 	WeaponSocket.Add("ThrowGenade");
 	WeaponArr.Init(nullptr, 2);
 
 	HealthComp = CreateDefaultSubobject<UUserHealthComponent>("HealthComp");
-	//HealthComp->SetIsReplicated(true);
+	HealthComp->SetNetAddressable();
+	HealthComp->SetIsReplicated(true);
+	//Health = HealthComp->GetHealth();
 	//HealthComponent = CreateDefaultSubobject<USHealthComponent>(TEXT("HealthComponent"));
 	//SpringArmComp = CreateDefaultSubobject<USpringArmComponent>(TEXT("SpringArmComp"));
 	UE_LOG(LogTemp, Log, TEXT("BUild"));
@@ -132,8 +134,14 @@ void AUserCharacter::StartAim()
 	bAiming = true;
 
 	bNeedToZoom = true;
-	//CameraComp->SetFieldOfView(ZoomFOV);
 	FollowCamera->SetActive(true);
+	if (MyWeapon->ThisWeaponType == 1) {
+		FollowCamera->SetFieldOfView(90);
+	}
+	if (MyWeapon->ThisWeaponType == 2) {
+		FollowCamera->SetFieldOfView(30);
+		Sniper();
+	}
 	CameraComp->SetActive(false);
 	//this->bUseControllerRotationYaw = false;
 
@@ -146,6 +154,9 @@ void AUserCharacter::StopAim()
 	//CameraComp->SetFieldOfView(DefaultFOV);
 	FollowCamera->SetActive(false);
 	CameraComp->SetActive(true);
+	if (MyWeapon->ThisWeaponType == 2) {
+		UnSniper();
+	}
 	//this->bUseControllerRotationYaw = true;
 
 }
@@ -170,37 +181,73 @@ void AUserCharacter::StopLookAround()
 
 void AUserCharacter::SwitchWeapon()
 {
-	//if (GetLocalRole() == ROLE_Authority) {
-		if (!CurrentWeapon) {
-			WeaponArr[1]->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, WeaponSocket[0]);
-			WeaponArr[0]->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, WeaponSocket[1]);
-		}
-		else {
-			WeaponArr[1]->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, WeaponSocket[1]);
-			WeaponArr[0]->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, WeaponSocket[0]);
-		}
-		//PlaySwitchAnimation();
-		CurrentWeapon = 1 - CurrentWeapon;
-		if (GetLocalRole() == ROLE_Authority)
-			MyWeapon = WeaponArr[CurrentWeapon];
-	//}
+	if (GetLocalRole() != ROLE_Authority) {
+		//ServerSwitch();
+		return;
+	}
+	if (!CurrentWeapon) {
+		WeaponArr[1]->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, WeaponSocket[0]);
+		WeaponArr[0]->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, WeaponSocket[1]);
+	}
+	else {
+		WeaponArr[1]->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, WeaponSocket[1]);
+		WeaponArr[0]->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, WeaponSocket[0]);
+	}
+	//PlaySwitchAnimation();
+	CurrentWeapon = 1 - CurrentWeapon;
+	MyWeapon = WeaponArr[CurrentWeapon];
+}
+
+void AUserCharacter::ServerSwitch_Implementation()
+{
+	//SwitchWeapon();
+	/*if (GetLocalRole() == ROLE_AutonomousProxy) {
+		return;
+	}*/
+	if (!CurrentWeapon) {
+		WeaponArr[1]->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, WeaponSocket[0]);
+		WeaponArr[0]->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, WeaponSocket[1]);
+	}
+	else {
+		WeaponArr[1]->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, WeaponSocket[1]);
+		WeaponArr[0]->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, WeaponSocket[0]);
+	}
+	//PlaySwitchAnimation();
+	CurrentWeapon = 1 - CurrentWeapon;
+	MyWeapon = WeaponArr[CurrentWeapon];
+}
+bool AUserCharacter::ServerSwitch_Validate()
+{
+	return true;
+}
+
+
+void AUserCharacter::ServerPickUp_Implementation()
+{
+	if (NewWeapon) {
+		WeaponArr[CurrentWeapon]->SetOwner(nullptr);
+		WeaponArr[CurrentWeapon]->Detach(UKismetMathLibrary::GetForwardVector(GetControlRotation()), 100);
+		//WeaponArr[CurrentWeapon]->AddImpulse(AddImpulse); (this);
+		NewWeapon->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, WeaponSocket[0]);
+		NewWeapon->SetOwner(this);
+		
+		WeaponArr[CurrentWeapon] = NewWeapon;
+		MyWeapon = WeaponArr[CurrentWeapon];
+		NewWeapon = nullptr;
+	}
+	//StartThrow();
 }
 
 void AUserCharacter::StartThrow()
 {
 	//bEquip = false;
 	//WeaponArr[CurrentWeapon]->DetachFromActor(FDetachmentTransformRules::KeepWorldTransform);
-	if (NewWeapon) {
-		WeaponArr[CurrentWeapon]->SetOwner(nullptr);
-		WeaponArr[CurrentWeapon]->Detach(UKismetMathLibrary::GetForwardVector(GetControlRotation()), 100);
-		//WeaponArr[CurrentWeapon]->DestroyByUser(this);
-		NewWeapon->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, WeaponSocket[0]);
-		NewWeapon->SetOwner(this);
-		NewWeapon->ShowPickUpInfo(false);
-		WeaponArr[CurrentWeapon] = NewWeapon;
-		MyWeapon = WeaponArr[CurrentWeapon];
-		NewWeapon = nullptr;
+	if (GetLocalRole() != ROLE_Authority) {
+		ServerPickUp();
+		//return;
 	}
+	NewWeapon->ShowPickUpInfo(false);
+	
 }
 
 
@@ -228,17 +275,36 @@ void AUserCharacter::EquippedWeapon(AUserWeapon* ANewWeapon,bool InOverlap)
 void AUserCharacter::OnHealthChanged(UUserHealthComponent* OwnerHealthComp, float Health, float Damage, const UDamageType* DamageType, AController* InstigatedBy, AActor* DamageCauser)
 {
 	if (Health <= 0 && !bDied) {
+		AUserPlayerState* PS=Cast<AUserPlayerState>(GetPlayerState());
+		PS->AddDiedNumber(1);
 		bDied = true;
 		GetMovementComponent()->StopMovementImmediately();
 		//GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-		DetachFromControllerPendingDestroy();
-		SetLifeSpan(2500.0f);
+		
+		GetMesh()->SetAllBodiesSimulatePhysics(true);
+		GetMesh()->SetAllBodiesPhysicsBlendWeight(1.0);
+		GetMesh()->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+		WeaponArr[0]->DestroyByUser(this);
+		WeaponArr[1]->DestroyByUser(this);
+		//SetLifeSpan(2.0f);
 
+		if (GetLocalRole() == ROLE_Authority)
+		{
+				GetWorldTimerManager().SetTimer(TimerHandle_LifeSpanExpired, this, &AUserCharacter::WaitForReborn, 5, false);
+		}
+		
 		APVEGameModeBase* GM = Cast<APVEGameModeBase>(GetWorld()->GetAuthGameMode());
 		if (GM) {
-			GM->OnActorKilled.Broadcast(this, DamageCauser, InstigatedBy);
+			if(InstigatedBy)
+				GM->OnActorKilled.Broadcast(this, this->GetInstigator(), DamageCauser, InstigatedBy);
+			else
+				GM->OnActorKilled.Broadcast(this, this->GetInstigator(), DamageCauser, DamageCauser->GetOwner());
 		}
 	}
+}
+void AUserCharacter::WaitForReborn() {
+	DetachFromControllerPendingDestroy();
+	Destroy();
 }
 
 //行走脚步贴图和声效
@@ -279,6 +345,7 @@ void AUserCharacter::Tick(float DeltaTime)
 	Super::Tick(DeltaTime);
 	
 }
+
 
 
 float AUserCharacter::GetHealth()
@@ -343,13 +410,15 @@ FVector AUserCharacter::GetPawnViewLocation() const
 	return Super::GetPawnViewLocation();
 }
 
-void AUserCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const 
+void AUserCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 	DOREPLIFETIME(AUserCharacter, MyWeapon);
+	DOREPLIFETIME(AUserCharacter, NewWeapon);
 	DOREPLIFETIME(AUserCharacter, WeaponArr);
 	DOREPLIFETIME(AUserCharacter, CurrentWeapon);
 	DOREPLIFETIME(AUserCharacter, bDied);
 	DOREPLIFETIME(AUserCharacter, bFiring);
 	DOREPLIFETIME(AUserCharacter, bAiming);
+	//DOREPLIFETIME(AUserCharacter, HealthComp);
 }

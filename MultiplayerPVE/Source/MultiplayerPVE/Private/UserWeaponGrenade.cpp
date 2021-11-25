@@ -30,7 +30,8 @@ AUserWeaponGrenade::AUserWeaponGrenade()
 	ExplosionImpulse = 400;
 	AudioComp = CreateDefaultSubobject<UAudioComponent>(TEXT("AudioComp"));
 	AudioComp->SetupAttachment(RootComponent);
-	SetReplicates(true);
+	bReplicates = true;
+	//SetReplicates(true);
 	SetReplicateMovement(true);
 	/*SphereComp->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
 	SphereComp->SetCollisionResponseToAllChannels(ECR_Block);*/
@@ -41,13 +42,16 @@ AUserWeaponGrenade::AUserWeaponGrenade()
 void AUserWeaponGrenade::OnOverlapBegin(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 
 {
-	bOverlap = true;
-	UE_LOG(LogTemp, Log, TEXT("in explore"));
-	if (!bThrow || bExplored) {
-		return;
-	}
-	if(bThrow &&  Cast<APawn>(OtherActor)) {
-		ExploreEffect();
+	if (ROLE_Authority == GetLocalRole()) {
+		bOverlap = true;
+		UE_LOG(LogTemp, Log, TEXT("in explore"));
+		if (!bThrow || bExplored) {
+			return;
+		}
+		if (bThrow && Cast<APawn>(OtherActor)) {
+			ExploreEffect();
+		}
+
 	}
 	
 
@@ -59,6 +63,17 @@ void AUserWeaponGrenade::OnRep_Expolded()
 	MeshComp->SetMaterial(0, ExplodedMaterial);
 }
 
+void AUserWeaponGrenade::ServerExplore_Implementation()
+{
+	MeshComp->SetMaterial(0, ExplodedMaterial);
+	RadialForceComp->FireImpulse();
+	TArray<AActor*> NoActor;
+	//AController* AC = Cast<APawn>(this->GetOwner())->GetController();
+	UGameplayStatics::ApplyRadialDamage(GetWorld(), 55, GetActorLocation(), 100, DamageType, NoActor, this->GetOwner(), nullptr, true, ECC_Pawn);
+	SetLifeSpan(5.0f);
+	
+}
+
 void AUserWeaponGrenade::BeginPlay()
 {
 	Super::BeginPlay();
@@ -68,20 +83,25 @@ void AUserWeaponGrenade::BeginPlay()
 void AUserWeaponGrenade::ExploreEffect()
 {
 	bExplored = true;
-	//OnRep_Expolded();
-	UE_LOG(LogTemp, Log, TEXT("explore"));
+	OnRep_Expolded();
+	if (GetLocalRole() != ROLE_Authority) {
+		ServerExplore();
+		return;
+	}
 
 	/*FVector BoostIntensity = FVector::UpVector * ExplosionImpulse;
-	MeshComp->AddImpulse(BoostIntensity, NAME_None, true);*/
+	MeshComp->AddImpulse(BoostIntensity, NAME_None, true);
 	UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), ExplosionEffect, GetActorLocation());
-	MeshComp->SetMaterial(0, ExplodedMaterial);
-	RadialForceComp->FireImpulse();
+	*/
 	if (!AudioComp->IsPlaying()) {
 		AudioComp->Play();
 	}
+	MeshComp->SetMaterial(0, ExplodedMaterial);
+	RadialForceComp->FireImpulse();
 	TArray<AActor*> NoActor;
-	UGameplayStatics::ApplyRadialDamage(GetWorld(), 55, GetActorLocation(), 50, DamageType, NoActor,this,nullptr,true,ECC_Pawn);
+	UGameplayStatics::ApplyRadialDamage(GetWorld(), 55, GetActorLocation(), 50, DamageType, NoActor, this, nullptr, true, ECC_Pawn);
 	SetLifeSpan(5.0f);
+	
 }
 
 void AUserWeaponGrenade::Throw(FVector StartDirection, float Speed)
@@ -94,10 +114,11 @@ void AUserWeaponGrenade::Throw(FVector StartDirection, float Speed)
 	MeshComp->SetSimulatePhysics(true);
 	MeshComp->SetEnableGravity(true);
 	MeshComp->SetPhysicsLinearVelocity(FVector::ZeroVector);
-	//UE_LOG(LogTemp, Log, TEXT("LOCATION:%d,%d,%d"), StartDirection.X, StartDirection.Y, StartDirection.Z );
+	if(GetLocalRole()==ROLE_Authority)
+	UE_LOG(LogTemp, Log, TEXT("THROW"));
 	MeshComp->AddImpulse(StartDirection * Speed);
-	/*FString message = FString::Printf(TEXT("%f m.s"), SphereComp->GetComponentVelocity().Size());
-	GEngine->AddOnScreenDebugMessage(-1, 1.0f, FColor::Black, message);*/
+	/*FString message = FString::Printf(TEXT("%f m.s"), SphereComp->GetComponentVelocity().Size());*/
+	//GEngine->AddOnScreenDebugMessage(-1, 1.0f, FColor::Black, TEXT());
 	bThrow = true;
 	
 }
@@ -116,5 +137,7 @@ void AUserWeaponGrenade::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& O
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 	DOREPLIFETIME(AUserWeaponGrenade, bExplored);
+	DOREPLIFETIME(AUserWeaponGrenade, bThrow);
+	DOREPLIFETIME(AUserWeaponGrenade, bOverlap);
 }
 

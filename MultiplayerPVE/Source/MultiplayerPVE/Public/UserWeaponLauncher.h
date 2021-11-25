@@ -18,9 +18,16 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Weapon")
 		TSubclassOf<AUserWeaponGrenade> StarterThrowWeaponClass;
 	FName ThrowWeaponSocket;
+
+	UPROPERTY(Replicated)
 	AUserWeaponGrenade* Grenade;
+	//UFUNCTION(Server)
 	void StartThrow();
+	//UFUNCTION(Server)
 	void EndThrow(FRotator FV);
+	UFUNCTION(Server, Reliable, WithValidation)
+		void ServerFireLauncher();
+	
 public:
 	AUserWeaponLauncher();
 	void virtual Fire() override;

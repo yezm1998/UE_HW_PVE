@@ -32,5 +32,6 @@ public:
 	//virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 	UPROPERTY(BlueprintAssignable, Category = "Health")
 		FOnHealthChanged OnHealthChanged;
+	UFUNCTION(BlueprintCallable,Category="Health")
 	float GetHealth();
 };

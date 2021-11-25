@@ -6,11 +6,12 @@
 #include "GameFramework\GameMode.h"
 #include "PVEGameModeBase.generated.h"
 
+class APlayerController;
 /**
  * 
  */
 enum class EnumWaveState:uint8;
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FOnActorKilledByUser, AActor*, VictimActor, AActor*, KillerActor, AActor*, KillerActorController);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_FourParams(FOnActorKilledByUser, AActor*, VictimActor, AActor*, VictimActorController, AActor*, KillerActor, AActor*, KillerActorController);
 
 UCLASS()
 class MULTIPLAYERPVE_API APVEGameModeBase : public AGameMode
@@ -22,9 +23,12 @@ protected:
 	//int64 state;
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GameMode")
 		float TimeWait;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GameMode")
 	int64 GameCountTime;
 	int64 WaveNumber;
 	int64 WaveEnemyNumber;
+	TMap<APlayerController*, bool> MPC;
+	TQueue<APlayerController*> QPC;
 protected:
 	UFUNCTION(BlueprintImplementableEvent, Category = "GameMode")
 		void SpawnNewEnemy();
@@ -39,6 +43,17 @@ protected:
 	void GameOver();
 	void SetWaveState(EnumWaveState NewState);
 	bool bGameState;
+	void RestartDeadPlayers();
+	/// <summary>
+	/// pvp
+	/// </summary>
+	UFUNCTION(BlueprintCallable)
+	void PVPMode();
+	void PVPCountDown();
+	UFUNCTION(BlueprintImplementableEvent)
+	void PVPEndGame();
+	void RestartPlayerWithScends(float WaitTime, APlayerController* PC);
+	void RestartPlayerGameMode();
 public:
 	virtual void StartPlay() override;
 	//virtual void Tick(float DeltaTime) override;

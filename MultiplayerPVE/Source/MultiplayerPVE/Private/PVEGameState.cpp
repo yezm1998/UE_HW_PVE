@@ -8,9 +8,16 @@ void APVEGameState::OnRep_WaveState(EnumWaveState OldState)
 	WaveStateChanged(WaveState, OldState);
 }
 
+void APVEGameState::SetNewTime(int NowTime)
+{
+	CountDownTime = NowTime;
+}
+
 void APVEGameState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 	DOREPLIFETIME(APVEGameState, WaveState);
+	DOREPLIFETIME(APVEGameState, CountDownTime);
+	
 }
 
 void APVEGameState::SetWaveState(EnumWaveState NewWaveState)

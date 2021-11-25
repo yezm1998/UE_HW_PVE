@@ -54,8 +54,7 @@ protected:
 	float BasicDamage;
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Fire")
 		float ShootRange;
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon")
-		WeaponType ThisWeaponType;
+	
 	UPROPERTY(EditAnywhere, Category = "Fire")
 		USphereComponent* MuzzlePosition;
 	UPROPERTY(EditDefaultsOnly,BlueprintReadOnly,Category="Weapon")
@@ -105,12 +104,14 @@ protected:
 	class UAnimationAsset* Anim;
 	UPROPERTY(EditDefaultsOnly, Category = "FireAnim")
 	class UAnimMontage* WeaponMontage;
+	
 public:	
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
 	//void SetupPlayerInputComponent(UInputComponent* PlayerInputComponent);
 	//UFUNCTION(BlueprintCallable, Category = "Weapon")
-		
+	//开镜
+	
 	//自动开火
 	UFUNCTION(BlueprintCallable, Category = "Weapon")
 		virtual void StartFire();
@@ -126,4 +127,6 @@ public:
 	//显示拾起提示
 	UFUNCTION(BlueprintImplementableEvent, Category = "Pickup")
 		void ShowPickUpInfo(bool IsVisible);
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon")
+		int ThisWeaponType;
 };

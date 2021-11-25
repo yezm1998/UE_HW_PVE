@@ -22,6 +22,8 @@ class MULTIPLAYERPVE_API APVEGameState : public AGameState
 {
 	GENERATED_BODY()
 protected:
+	UPROPERTY(Replicated, VisibleAnywhere,BlueprintReadOnly, Category = "GameState")
+	int CountDownTime;
 	UFUNCTION()
 		void OnRep_WaveState(EnumWaveState OldState);
 	UFUNCTION(BlueprintImplementableEvent, Category = "GameState")
@@ -29,6 +31,8 @@ protected:
 	UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_WaveState, Category = "GameState")
 		EnumWaveState WaveState;
 public:
+	UFUNCTION()
+		void SetNewTime(int NowTime);
 	void SetWaveState(EnumWaveState NewWaveState);
 	
 };

@@ -15,7 +15,7 @@ APVEGameModeBase::APVEGameModeBase()
 	PlayerStateClass = AUserPlayerState::StaticClass();
 	WaveNumber = 0;
 	TimeWait = 5.0f;
-	GameCountTime = 60;
+	GameCountTime = 40;
 	bGameState = true;
 	/*PrimaryActorTick.bCanEverTick = true;
 	PrimaryActorTick.TickInterval = 1.0f;*/
@@ -50,6 +50,7 @@ void APVEGameModeBase::PrepareNextWave()
 	FTimerHandle TimerHandle_EnemyWave;
 	GetWorldTimerManager().SetTimer(TimerHandle_EnemyWave, this, &APVEGameModeBase::StartWare, TimeWait, false);
 	SetWaveState(EnumWaveState::WaitingToStart);
+	RestartDeadPlayers();
 }
 
 bool APVEGameModeBase::CheckAnyPlayerAlive()
@@ -88,10 +89,25 @@ void APVEGameModeBase::SetWaveState(EnumWaveState NewState)
 	}
 }
 
+void APVEGameModeBase::RestartDeadPlayers()
+{
+	for (FConstPlayerControllerIterator it = GetWorld()->GetPlayerControllerIterator(); it; it++)
+	{
+		APlayerController* PC = it->Get();
+		
+		if (PC && PC->GetPawn() == nullptr) {
+			/*QPC.Enqueue(PC);
+			MPC.Add( PC, true );
+			RestartPlayerWithScends(2, PC);*/
+			RestartPlayer(PC);
+		}
+	}
+}
+
 void APVEGameModeBase::StartPlay()
 {
 	Super::StartPlay();
-	PrepareNextWave();
+	//PrepareNextWave();
 }
 
 
@@ -118,3 +134,39 @@ void APVEGameModeBase::SpawnWaveEnemys()
 	}
 }
 
+void APVEGameModeBase::PVPMode()
+{
+	//GetWorldTimerManager().SetTimer(TimerHandle_TimeCount, this, &ALaunch::CutTime, 1.0f, true, 1.0f);
+	GetWorldTimerManager().SetTimer(TimerHandle_TimeCount, this, &APVEGameModeBase::PVPCountDown, 1, true, 1);
+}
+
+void APVEGameModeBase::PVPCountDown()
+{
+	if (!GameCountTime) {
+		PVPEndGame();
+		GetWorldTimerManager().ClearTimer(TimerHandle_TimeCount);
+		return;
+	}
+	--GameCountTime;
+	APVEGameState* GS = GetGameState<APVEGameState>();
+	GS->SetNewTime(GameCountTime);
+	RestartDeadPlayers();
+	
+}
+
+void APVEGameModeBase::RestartPlayerWithScends(float WaitTime, APlayerController* PC)
+{
+	
+	FTimerHandle TimerHandle_temp;
+	GetWorldTimerManager().SetTimer(TimerHandle_temp, this, &APVEGameModeBase::RestartPlayerGameMode, WaitTime, false);
+	RestartPlayer(PC);
+}
+
+void APVEGameModeBase::RestartPlayerGameMode()
+{	
+	/*APlayerController* PC =QPC.Peek();
+	RestartPlayer(PC);
+	MPC.Remove(PC);
+	QPC.Pop();*/
+	
+}
