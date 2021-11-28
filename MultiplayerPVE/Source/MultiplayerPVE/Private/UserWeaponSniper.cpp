@@ -2,4 +2,3 @@
 
 
 #include "UserWeaponSniper.h"
-

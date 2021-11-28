@@ -6,7 +6,7 @@
 #include "Components/ActorComponent.h"
 #include "UserHealthComponent.generated.h"
 
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_SixParams(FOnHealthChanged, UUserHealthComponent*, HealthComp, float, Health, float, Damage, const class UDamageType*, DamageType, class AController*, InstigatedBy, AActor*, DamageCauser);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_SevenParams(FOnHealthChanged, UUserHealthComponent*, HealthComp, AActor*,Victim, float, Health, float, Damage, const class UDamageType*, DamageType, class AController*, InstigatedBy, AActor*, DamageCauser);
 UCLASS( ClassGroup=(COOP), meta=(BlueprintSpawnableComponent) )
 class MULTIPLAYERPVE_API UUserHealthComponent : public UActorComponent
 {
@@ -34,4 +34,6 @@ public:
 		FOnHealthChanged OnHealthChanged;
 	UFUNCTION(BlueprintCallable,Category="Health")
 	float GetHealth();
+	UFUNCTION(BlueprintCallable, Category = "Health")
+	void AddHealth(float Buff);
 };

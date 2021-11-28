@@ -40,8 +40,10 @@ AUserWeapon::AUserWeapon()
 	SphereComp->SetCollisionResponseToAllChannels(ECR_Ignore);
 	SphereComp->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
 	ShootRange = 10000.0;
+	DamageCoefficient = 1;
 	BasicDamage = 25;
 	RateOfFire = 300;
+	LastFireTime = 0;
 	MuzzleSocketName = TEXT("MuzzleSocket");
 	ThisWeaponType = 1;
 	bReplicates = true;
@@ -95,11 +97,12 @@ void AUserWeapon::PlayImpactEffect(EPhysicalSurface SurfaceType, FHitResult Hit)
 	{
 	case SurfaceDefault:
 		UE_LOG(LogTemp, Log, TEXT("default"));
+		DamageCoefficient = 1;
 		SelectedEffect = DefaultHitEffect;
 		break;
 	case SurfaceFlesh:
 		UE_LOG(LogTemp, Log, TEXT("blood"));
-		BasicDamage *= 2;
+		DamageCoefficient = 2;
 		SelectedEffect = FleshBloodHitEffect;
 		break;
 	default:
@@ -116,11 +119,7 @@ void AUserWeapon::Fire()
 	if (GetLocalRole() != ROLE_Authority) {
 		ServerFire();
 	}
-	/*if (ThisWeaponType == WeaponType::Dagger) {
-		DaggerFire();
-	}
-	else if (ThisWeaponType == WeaponType::Gun) {*/
-		AActor* MyPawn = GetOwner();
+		AUserCharacter * MyPawn = Cast<AUserCharacter>(GetOwner());
 		if (MyPawn) {
 			FHitResult Hit;
 			FCollisionQueryParams QueryParams;
@@ -138,15 +137,22 @@ void AUserWeapon::Fire()
 			FVector EndPosition = EyePosition + EyeRotation.Vector() * ShootRange;
 			EPhysicalSurface SurfaceType = SurfaceType_Default;
 			FVector TraceEndPoint = EndPosition;
-			if (GetWorld()->LineTraceSingleByChannel(Hit, MuzzlePosition->GetComponentLocation(), EndPosition, CollisionWeapon, QueryParams)) {
+			if (GetWorld()->LineTraceSingleByChannel(Hit, EyePosition, EndPosition, CollisionWeapon, QueryParams)) {// start : MuzzlePosition->GetComponentLocation()
 				AActor* HitActor = Hit.GetActor();
-
+				AUserCharacter* HitUser = Cast<AUserCharacter>(HitActor);
+				
 				//获取目标材质
 				SurfaceType = UPhysicalMaterial::DetermineSurfaceType(Hit.PhysMaterial.Get());
 
 				PlayImpactEffect(SurfaceType, Hit);
+				if (HitUser && HitUser->IsAI == MyPawn->IsAI) {
+					//队友免伤
+					;
+				}
+				else {
+					UGameplayStatics::ApplyPointDamage(HitActor, DamageCoefficient * BasicDamage, Rotation, Hit, MyPawn->GetInstigatorController(), this, DamageType);
+				}
 				//造成伤害
-				UGameplayStatics::ApplyPointDamage(HitActor, BasicDamage, Rotation, Hit, MyPawn->GetInstigatorController(), this, DamageType);
 
 				TraceEndPoint = Hit.ImpactPoint;
 			}
@@ -162,7 +168,7 @@ void AUserWeapon::Fire()
 			//Cast<AUserCharacter>(MyPawn)->PlayAnimationByWeapon();
 		}
 	
-	//GetWorld()->TimeSeconds();
+	LastFireTime = GetWorld()->TimeSeconds;
 }
 
 void AUserWeapon::OnRep_HitScanTrace()
@@ -184,8 +190,8 @@ bool AUserWeapon::ServerFire_Validate()
 void AUserWeapon::StartFire()
 {
 	//防止点击过快超过射速
-	//float FirstDelay = FMath::Max (LastTime + RateOfFire - GetWorld()->TimeSeconds , 0.0f);
-	GetWorldTimerManager().SetTimer(FireTimer,this,&AUserWeapon::Fire, 60/ RateOfFire, true, 0);
+	float FirstDelay = FMath::Max (LastFireTime + 60 / RateOfFire - GetWorld()->TimeSeconds , 0.0f);
+	GetWorldTimerManager().SetTimer(FireTimer,this,&AUserWeapon::Fire, 60/ RateOfFire, true, FirstDelay);
 
 }
 
@@ -211,7 +217,7 @@ void AUserWeapon::OnOverlapBegin(UPrimitiveComponent* OverlappedComponent, AActo
 {
 	if (GetOwner())
 		return;
-	ShowPickUpInfo(true);
+	//ShowPickUpInfo(true);
 	UE_LOG(LogTemp, Warning, TEXT("Weapon:OverLap"));
 	AUserCharacter* User = Cast<AUserCharacter>(OtherActor);
 	if (User) {
@@ -224,7 +230,7 @@ void AUserWeapon::OnOverlapEnd(UPrimitiveComponent* OverlappedComponent, AActor*
 {
 	if (GetOwner())
 		return;
-	ShowPickUpInfo(false);
+	//ShowPickUpInfo(false);
 	UE_LOG(LogTemp, Warning, TEXT("Weapon:OverLapEnd"));
 	AUserCharacter* User = Cast<AUserCharacter>(OtherActor);
 	if (User) {
@@ -233,28 +239,45 @@ void AUserWeapon::OnOverlapEnd(UPrimitiveComponent* OverlappedComponent, AActor*
 	}
 }
 void AUserWeapon::DestroyByUser(AUserCharacter* User) {
-	if(User==Cast<AUserCharacter>(GetOwner()))
+	if(this && User==Cast<AUserCharacter>(GetOwner()))
 	{
 		Destroy();
 	}
 	
 }
 
-void AUserWeapon::PlayMontage(UAnimInstance* AnimInstance,bool Play)
+void AUserWeapon::PlayMontage(ACharacter* Player,bool Play)
 {
-	if (AnimInstance) {
+	if (!Player)return;
+	if (GetLocalRole() == ROLE_Authority) {
+		MutiFireBox(Player, Play);
+	}
+	else {
+		ServerPlayMontage(Player,Play);
+	}
+}
+
+void AUserWeapon::ServerPlayMontage_Implementation(ACharacter* Player, bool Play)
+{
+	MutiFireBox(Player, Play);
+}
+
+void AUserWeapon::MutiFireBox_Implementation(ACharacter* Player, bool Play)
+{
+	
 		if (WeaponMontage) {
 			if (Play)
-				AnimInstance->Montage_Play(WeaponMontage);
+				Player->PlayAnimMontage(WeaponMontage);
 			else
-				AnimInstance->Montage_Stop(0.1,WeaponMontage);
+				Player->StopAnimMontage(WeaponMontage);
+			//AnimInstance->Montage_Stop(0.1, WeaponMontage);
 		}
-	}
+	
 }
 
 void AUserWeapon::Detach(FVector StartDirection,float Speed)
 {
-	MeshComponent->DetachFromComponent(FDetachmentTransformRules::KeepWorldTransform);
+	this->DetachFromActor(FDetachmentTransformRules::KeepWorldTransform);
 	MeshComponent->SetSimulatePhysics(true);
 	MeshComponent->SetEnableGravity(true);
 	MeshComponent->SetPhysicsLinearVelocity(FVector::ZeroVector);

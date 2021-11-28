@@ -13,5 +13,12 @@ UCLASS()
 class MULTIPLAYERPVE_API AUserWeaponDagger : public AUserWeapon
 {
 	GENERATED_BODY()
+protected:
+	UFUNCTION(Server, Reliable)
+	void ServerFireBox();
 	
+	void FireBox();
+public:
+	AUserWeaponDagger();
+	void virtual Fire() override;
 };

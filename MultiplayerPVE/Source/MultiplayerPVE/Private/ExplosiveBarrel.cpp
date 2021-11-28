@@ -36,7 +36,7 @@ void AExplosiveBarrel::BeginPlay()
 
 }
 
-void AExplosiveBarrel::OnHealthChanged(UUserHealthComponent* OwnerHealthComp, float Health, float Damage, const class UDamageType* DamageType, class AController* InstigatedBy, AActor* DamageCauser)
+void AExplosiveBarrel::OnHealthChanged(UUserHealthComponent* OwnerHealthComp,AActor* victim, float Health, float Damage, const class UDamageType* DamageType, class AController* InstigatedBy, AActor* DamageCauser)
 {
 	if (bExplored) {
 		return;

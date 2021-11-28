@@ -13,17 +13,22 @@ APVEGameModeBase::APVEGameModeBase()
 {
 	GameStateClass = APVEGameState::StaticClass();
 	PlayerStateClass = AUserPlayerState::StaticClass();
-	WaveNumber = 0;
-	TimeWait = 5.0f;
-	GameCountTime = 40;
+	WaveNumber = 5;
+	Restart = 2;
+	TimeWait = 15.0f;
+	GameCountTime = 120;
 	bGameState = true;
-	/*PrimaryActorTick.bCanEverTick = true;
-	PrimaryActorTick.TickInterval = 1.0f;*/
+	bEnd = false;
+	bFinish = false;
+	PrepareTime = 5;
+	PrimaryActorTick.bCanEverTick = true;
+	PrimaryActorTick.TickInterval = 1.0f;
 }
 
 void APVEGameModeBase::StartWare()
 {
-	++WaveNumber;
+	GetWorldTimerManager().ClearTimer(TimerHandle_EnemyWave);
+	--WaveNumber;
 	WaveEnemyNumber = 1;// *WaveNumber;
 	GetWorldTimerManager().SetTimer(TimerHandle_TimeCount, this, &APVEGameModeBase::SpawnWaveEnemys, 1.0f, true, 0.0f);
 	SetWaveState(EnumWaveState::WaveInPropress);
@@ -31,26 +36,23 @@ void APVEGameModeBase::StartWare()
 
 void APVEGameModeBase::EndWare()
 {
-	if (bGameState && CheckAnyPlayerAlive()) {
-		GetWorldTimerManager().ClearTimer(TimerHandle_TimeCount);
+	GetWorldTimerManager().ClearTimer(TimerHandle_TimeCount);
+	if (WaveNumber) {
 		PrepareNextWave();
+		SetWaveState(EnumWaveState::WaitingToComplete);
 	}
-	
-	if (bGameState && !CheckAnyPlayerAlive()) {
-		GetWorldTimerManager().ClearTimer(TimerHandle_TimeCount);
-		bGameState = false;
-		//PrepareNextWave();
+	else {
+		bEnd = true;
 	}
-	SetWaveState(EnumWaveState::WaitingToComplete);
 
 }
 
 void APVEGameModeBase::PrepareNextWave()
 {
-	FTimerHandle TimerHandle_EnemyWave;
+	
 	GetWorldTimerManager().SetTimer(TimerHandle_EnemyWave, this, &APVEGameModeBase::StartWare, TimeWait, false);
 	SetWaveState(EnumWaveState::WaitingToStart);
-	RestartDeadPlayers();
+	// ? RestartDeadPlayers();
 }
 
 bool APVEGameModeBase::CheckAnyPlayerAlive()
@@ -62,20 +64,21 @@ bool APVEGameModeBase::CheckAnyPlayerAlive()
 			APawn* MyPawn = PC->GetPawn();
 			AUserCharacter* Player = Cast<AUserCharacter>(MyPawn);
 			if (!Player)return true;
-			if (ensure(Player) && Player->GetHealth() > 0 ) { //
+			if (ensure(Player) && !Player->IsAI && Player->GetHealth() > 0 ) { //
 				//UE_LOG(LogTemp, Log, TEXT("Health %f"), Player->GetHealth());
 				return true;
 			}
 		}
 	}
-	SetWaveState(EnumWaveState::WaveComplete);
+	//SetWaveState(EnumWaveState::WaveComplete);
 	return false;
 }
 
-void APVEGameModeBase::GameOver()
+void APVEGameModeBase::GameOver(bool Success)
 {
-	EndWare();
-	ShowResult();
+	//EndWare();
+	bFinish = true;
+	ShowResult(Success);
 	SetWaveState(EnumWaveState::GameOver);
 }
 
@@ -89,6 +92,15 @@ void APVEGameModeBase::SetWaveState(EnumWaveState NewState)
 	}
 }
 
+EnumWaveState APVEGameModeBase::GetWaveState()
+{
+	APVEGameState* GS = GetGameState<APVEGameState>();
+	if (ensureAlways(GS)) {
+		 return GS->GetWaveState();
+	}
+	return EnumWaveState::WaitingToStart;
+}
+
 void APVEGameModeBase::RestartDeadPlayers()
 {
 	for (FConstPlayerControllerIterator it = GetWorld()->GetPlayerControllerIterator(); it; it++)
@@ -96,10 +108,13 @@ void APVEGameModeBase::RestartDeadPlayers()
 		APlayerController* PC = it->Get();
 		
 		if (PC && PC->GetPawn() == nullptr) {
-			/*QPC.Enqueue(PC);
-			MPC.Add( PC, true );
-			RestartPlayerWithScends(2, PC);*/
-			RestartPlayer(PC);
+			if (Restart > 0) {
+				RestartPlayer(PC);
+				Restart--;
+			}
+			else {
+				return;
+			}
 		}
 	}
 }
@@ -111,27 +126,53 @@ void APVEGameModeBase::StartPlay()
 }
 
 
-/*void APVEGameModeBase::Tick(float DeltaTime)
+void APVEGameModeBase::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-	if (bGameState && !CheckAnyPlayerAlive()) {
-		GameOver();
+	if (bFinish)
+		return;
+	if (Restart < 1 && !CheckAnyPlayerAlive()) {
+		GameOver(false);
 	}
-}*/
+	if (!CheckNPCAlive()) {
+		GameOver(false);
+	}
+	if (!CheckAllAI() && GetWaveState() == EnumWaveState::WaitingToStart) {
+		StartWare();
+	}
+	if (bEnd && !CheckAllAI()) {
+		GameOver(true);
+	}
+	RestartDeadPlayers();
+	
+}
 
+void APVEGameModeBase::PVEMode()
+{
+	FTimerHandle TimerHandle_Temp;
+	GetWorldTimerManager().SetTimer(TimerHandle_Temp, this, &APVEGameModeBase::PrepareFirstWave, 1, true);
+}
 
 void APVEGameModeBase::SpawnWaveEnemys()
 {
 
-	SpawnNewEnemy();
+	SpawnNewMeleeEnemy();
+	SpawnNewBossEnemy();
+	SpawnNewRemoteEnemy();
 	--WaveEnemyNumber;
 	if (WaveEnemyNumber <= 0) {
-		if (CheckAnyPlayerAlive())
-			EndWare();
-		else
-			GameOver();
-		//EndWare();
+		EndWare();
 	}
+}
+
+void APVEGameModeBase::PrepareFirstWave()
+{
+	if (!PrepareTime) {
+		GetWorldTimerManager().ClearTimer(TimerHandle_TimeCount);
+		StartWare();
+		//PrepareNextWave();
+	}
+	PrepareTime--;
 }
 
 void APVEGameModeBase::PVPMode()
@@ -156,10 +197,13 @@ void APVEGameModeBase::PVPCountDown()
 
 void APVEGameModeBase::RestartPlayerWithScends(float WaitTime, APlayerController* PC)
 {
-	
-	FTimerHandle TimerHandle_temp;
+	if (Restart) {
+		--Restart;
+		RestartPlayer(PC);
+	}
+	/*FTimerHandle TimerHandle_temp;
 	GetWorldTimerManager().SetTimer(TimerHandle_temp, this, &APVEGameModeBase::RestartPlayerGameMode, WaitTime, false);
-	RestartPlayer(PC);
+	RestartPlayer(PC);*/
 }
 
 void APVEGameModeBase::RestartPlayerGameMode()

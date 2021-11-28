@@ -51,8 +51,10 @@ protected:
 
 	void PlayEffect(FVector TraceEndPoint);
 	void PlayImpactEffect(EPhysicalSurface SurfaceType, FHitResult Hit);
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Fire")
 	float BasicDamage;
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Fire")
+	int DamageCoefficient;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Fire")
 		float ShootRange;
 	
 	UPROPERTY(EditAnywhere, Category = "Fire")
@@ -82,7 +84,9 @@ protected:
 		UParticleSystem* TraceEffect;
 	virtual void Fire();
 	FTimerHandle FireTimer;
+	UPROPERTY(EditDefaultsOnly, Category = "Fire")
 	float RateOfFire;
+	float LastFireTime;
 
 	//服务器调用开火
 	UFUNCTION(Server,Reliable,WithValidation)
@@ -121,7 +125,11 @@ public:
 	UFUNCTION()
 	void DestroyByUser(AUserCharacter* User);
 	//武器动画
-	void PlayMontage(UAnimInstance* AnimInstance, bool Play);
+	void PlayMontage(ACharacter* Player, bool Play);
+	UFUNCTION(Server,Reliable)
+	void ServerPlayMontage(ACharacter* Player, bool Play);
+	UFUNCTION(NetMulticast, Reliable)
+	void MutiFireBox(ACharacter* Player, bool Play);
 	//解除武器
 	void Detach(FVector StartDirection, float Speed);
 	//显示拾起提示

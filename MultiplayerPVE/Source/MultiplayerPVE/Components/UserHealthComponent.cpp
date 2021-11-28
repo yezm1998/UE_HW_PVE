@@ -39,12 +39,21 @@ void UUserHealthComponent::HandleAnyDamage(AActor* DamagedActor, float Damage, c
 	}
 	Health = FMath::Clamp(Health - Damage, 0.0f, DefaultHealth);
 	//UE_LOG(LogTemp, Log, TEXT("%f %f"), Health, Damage);
-	OnHealthChanged.Broadcast(this, Health, Damage, DamageType, InstigatedBy, DamageCauser);
+	OnHealthChanged.Broadcast(this, GetOwner(), Health, Damage, DamageType, InstigatedBy, DamageCauser);
 }
 
 float UUserHealthComponent::GetHealth()
 {
 	return Health;
+}
+
+void UUserHealthComponent::AddHealth(float Buff)
+{
+	if (Health <= 0) {
+		return;
+	}
+	Health = FMath::Clamp(Health + Buff, 0.0f, DefaultHealth);
+
 }
 
 void UUserHealthComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const

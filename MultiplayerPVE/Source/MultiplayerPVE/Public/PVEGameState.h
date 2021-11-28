@@ -8,6 +8,7 @@
 
 UENUM(BlueprintType)
 enum class EnumWaveState:uint8 {
+	PlayerToReady,
 	WaitingToStart,
 	WaveInPropress,
 	WaitingToComplete,
@@ -34,5 +35,6 @@ public:
 	UFUNCTION()
 		void SetNewTime(int NowTime);
 	void SetWaveState(EnumWaveState NewWaveState);
-	
+	EnumWaveState GetWaveState();
+	APVEGameState();
 };

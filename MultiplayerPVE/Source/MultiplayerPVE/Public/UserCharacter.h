@@ -47,10 +47,7 @@ protected:
 	//开火——连续开火
 	//UFUNCTION()
 		//void HandleDamage(AActor* DamagedActor, float Damage, const class UDamageType* DamageType, class AController* InstigatedBy, AActor* DamageCauser);
-	UFUNCTION(BlueprintCallable, Category = "Weapon")
-	void StartFire();
-	UFUNCTION(BlueprintCallable, Category = "Weapon")
-	void StopFire();
+	
 	void StartAim();
 	void StopAim();
 	void SartLookAround();
@@ -70,6 +67,8 @@ protected:
 	//是否瞄准
 	UPROPERTY(Replicated, EditDefaultsOnly, BlueprintReadWrite, Category = "Components")
 		bool bAiming;
+	UFUNCTION(Server, Reliable)
+		void SetAiming(bool b);
 	//是否环视
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Components")
 		bool bLooking;
@@ -124,7 +123,7 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	UUserHealthComponent* HealthComp;
 	UFUNCTION()
-	void OnHealthChanged(UUserHealthComponent* OwnerHealthComp, float Health, float Damage, const class UDamageType* DamageType, class AController* InstigatedBy, AActor* DamageCauser);
+	void OnHealthChanged(UUserHealthComponent* OwnerHealthComp, AActor* victim, float Health, float Damage, const class UDamageType* DamageType, class AController* InstigatedBy, AActor* DamageCauser);
 	//重生
 	void WaitForReborn();
 	/*脚步效果*/
@@ -134,6 +133,8 @@ protected:
 		UMaterialInterface* WaterFloorEffect;
 	UFUNCTION(BlueprintCallable,Category="FootEffect")
 		void WalkingEffect(FVector FootPosition);
+	UFUNCTION(BlueprintImplementableEvent, Category = "Drop")
+	void SuppliesDrop(FVector Location);
 public:	
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
@@ -146,4 +147,15 @@ public:
 	UFUNCTION()
 	void EquippedWeapon(AUserWeapon* ANewWeapon,bool InOverlap);
 	bool bEquip;
+	//方便AI调用
+	UFUNCTION(BlueprintCallable, Category = "Weapon")
+		void StartFire();
+	UFUNCTION(BlueprintCallable, Category = "Weapon")
+		void StopFire();
+	UPROPERTY(EditDefaultsOnly,Category="AI")
+	bool IsAI;
+	UPROPERTY(BlueprintReadOnly, Category = "AI")
+	FVector DiedLocation;
+	UFUNCTION(BlueprintImplementableEvent, Category = "Name")
+	void SetUserName();
 };

@@ -28,3 +28,13 @@ void APVEGameState::SetWaveState(EnumWaveState NewWaveState)
 		OnRep_WaveState(OldWaveState);
 	}
 }
+
+EnumWaveState APVEGameState::GetWaveState()
+{
+	return WaveState;
+}
+
+APVEGameState::APVEGameState()
+{
+	WaveState = EnumWaveState::PlayerToReady;
+}

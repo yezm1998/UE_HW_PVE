@@ -10,12 +10,8 @@ void AUserPlayerState::AddScore(float ScoreDelta)
 
 void AUserPlayerState::AddDiedNumber_Implementation(float ScoreDelta)
 {
+	
 	NumberDied+= ScoreDelta;
-}
-
-void AUserPlayerState::AddDiedNumber_Implementation(float ScoreDelta)
-{
-	NumberDied += ScoreDelta;
 }
 
 void AUserPlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const {

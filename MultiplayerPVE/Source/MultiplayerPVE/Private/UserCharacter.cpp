@@ -76,7 +76,8 @@ void AUserCharacter::BeginPlay()
 		MyWeapon = WeaponArr[0];
 		CurrentWeapon = 0;
 	}
-	
+	if(!IsAI)
+	SetUserName();
 	//this->OnTakeAnyDamage.AddDynamic(this,&AUserCharacter::HandleDamage);
 	
 }
@@ -130,9 +131,13 @@ void AUserCharacter::StopFire()
 void AUserCharacter::StartAim()
 {
 	//UE_LOG(LogTemp, Log, TEXT("start"));
-	//if (GetLocalRole() == ROLE_Authority) 
-	bAiming = true;
-
+	if (GetLocalRole() != ROLE_Authority) {
+		SetAiming(true);
+	}
+	else {
+		bAiming = true;
+	}
+	
 	bNeedToZoom = true;
 	FollowCamera->SetActive(true);
 	if (MyWeapon->ThisWeaponType == 1) {
@@ -150,7 +155,12 @@ void AUserCharacter::StartAim()
 void AUserCharacter::StopAim()
 {
 	bNeedToZoom = false;
-	bAiming = false;
+	if (GetLocalRole() != ROLE_Authority) {
+		SetAiming(false);
+	}
+	else {
+		bAiming = false;
+	}
 	//CameraComp->SetFieldOfView(DefaultFOV);
 	FollowCamera->SetActive(false);
 	CameraComp->SetActive(true);
@@ -178,6 +188,11 @@ void AUserCharacter::StopLookAround()
 
 }
 
+
+void AUserCharacter::SetAiming_Implementation(bool b)
+{
+	bAiming = b;
+}
 
 void AUserCharacter::SwitchWeapon()
 {
@@ -230,7 +245,8 @@ void AUserCharacter::ServerPickUp_Implementation()
 		//WeaponArr[CurrentWeapon]->AddImpulse(AddImpulse); (this);
 		NewWeapon->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, WeaponSocket[0]);
 		NewWeapon->SetOwner(this);
-		
+		if(GetLocalRole()==ROLE_Authority)
+		UE_LOG(LogTemp, Log, TEXT("pick"));
 		WeaponArr[CurrentWeapon] = NewWeapon;
 		MyWeapon = WeaponArr[CurrentWeapon];
 		NewWeapon = nullptr;
@@ -246,7 +262,10 @@ void AUserCharacter::StartThrow()
 		ServerPickUp();
 		//return;
 	}
-	NewWeapon->ShowPickUpInfo(false);
+	else {
+		ServerPickUp_Implementation();
+	}
+	//NewWeapon->ShowPickUpInfo(false);
 	
 }
 
@@ -256,7 +275,8 @@ void AUserCharacter::StartThrow()
 
 void AUserCharacter::PlayAnimationByWeapon(bool Play)
 {
-	MyWeapon->PlayMontage(GetMesh()->GetAnimInstance(), Play);
+	//ACharacter* Player = Cast<ACharacter>(this->GetOwner());
+	MyWeapon->PlayMontage(this, Play);
 }
 
 void AUserCharacter::EquippedWeapon(AUserWeapon* ANewWeapon,bool InOverlap)
@@ -272,25 +292,32 @@ void AUserCharacter::EquippedWeapon(AUserWeapon* ANewWeapon,bool InOverlap)
 }
 
 
-void AUserCharacter::OnHealthChanged(UUserHealthComponent* OwnerHealthComp, float Health, float Damage, const UDamageType* DamageType, AController* InstigatedBy, AActor* DamageCauser)
+void AUserCharacter::OnHealthChanged(UUserHealthComponent* OwnerHealthComp,AActor* Victim, float Health, float Damage, const UDamageType* DamageType, AController* InstigatedBy, AActor* DamageCauser)
 {
 	if (Health <= 0 && !bDied) {
-		AUserPlayerState* PS=Cast<AUserPlayerState>(GetPlayerState());
-		PS->AddDiedNumber(1);
-		bDied = true;
-		GetMovementComponent()->StopMovementImmediately();
-		//GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		if (!IsAI) {
+			AUserPlayerState* PS = Cast<AUserPlayerState>(GetPlayerState());
+			PS->AddDiedNumber(1);
+		}
 		
+		bDied = true;
+		DiedLocation=GetMesh()->GetComponentLocation();
+		GetMovementComponent()->StopMovementImmediately();
 		GetMesh()->SetAllBodiesSimulatePhysics(true);
 		GetMesh()->SetAllBodiesPhysicsBlendWeight(1.0);
-		GetMesh()->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+		GetMesh()->SetCollisionEnabled(ECollisionEnabled::PhysicsOnly);
 		WeaponArr[0]->DestroyByUser(this);
 		WeaponArr[1]->DestroyByUser(this);
 		//SetLifeSpan(2.0f);
 
 		if (GetLocalRole() == ROLE_Authority)
 		{
-				GetWorldTimerManager().SetTimer(TimerHandle_LifeSpanExpired, this, &AUserCharacter::WaitForReborn, 5, false);
+			if (IsAI) {
+				DetachFromControllerPendingDestroy();
+				GetWorldTimerManager().SetTimer(TimerHandle_LifeSpanExpired, this, &AUserCharacter::WaitForReborn, 1, false);
+			}
+			else
+				GetWorldTimerManager().SetTimer(TimerHandle_LifeSpanExpired, this, &AUserCharacter::WaitForReborn, 3, false);
 		}
 		
 		APVEGameModeBase* GM = Cast<APVEGameModeBase>(GetWorld()->GetAuthGameMode());
@@ -303,6 +330,7 @@ void AUserCharacter::OnHealthChanged(UUserHealthComponent* OwnerHealthComp, floa
 	}
 }
 void AUserCharacter::WaitForReborn() {
+	SuppliesDrop(DiedLocation);
 	DetachFromControllerPendingDestroy();
 	Destroy();
 }

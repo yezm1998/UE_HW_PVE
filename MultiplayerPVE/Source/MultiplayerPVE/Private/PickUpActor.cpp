@@ -5,6 +5,7 @@
 #include "Components/SphereComponent.h"
 #include "Components/DecalComponent.h"
 #include "UserBuffer.h"
+#include "UserCharacter.h"
 // Sets default values
 
 APickUpActor::APickUpActor()
@@ -43,9 +44,12 @@ void APickUpActor::NotifyActorBeginOverlap(AActor* OtherActor)
 {
 	Super::NotifyActorBeginOverlap(OtherActor);
 	UE_LOG(LogTemp, Log, TEXT("overlap"));
-	if (PickUpInstance) {
+	AUserCharacter* PickUser = Cast<AUserCharacter>(OtherActor);
+	if (PickUser && !PickUser->IsAI && PickUpInstance) {
 		PickUpInstance->ActivatePowerUp();
 		PickUpInstance = nullptr;
+		DecalComp->SetVisibility(false, true);
 	}
+	
 }
 
