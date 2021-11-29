@@ -25,6 +25,7 @@ void AUserWeaponLauncher::Fire()
 		EndThrow(MyPawn->GetControlRotation());
 		//Cast<AUserCharacter>(MyPawn)->PlayAnimationByWeapon();
 	}
+	LastFireTime = GetWorld()->TimeSeconds;
 }
 
 void AUserWeaponLauncher::StartThrow()
