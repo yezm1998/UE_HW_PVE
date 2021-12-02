@@ -41,7 +41,7 @@ void AUserWeaponLauncher::EndThrow(FRotator FV)
 {
 	//FDetachmentTransformRules DetachParam(AttachmentRules,false);
 	
-	Grenade->Throw(UKismetMathLibrary::GetForwardVector(FV), 300);
+	Grenade->Throw(UKismetMathLibrary::GetForwardVector(FV), 600);
 	Grenade = nullptr;
 }
 
