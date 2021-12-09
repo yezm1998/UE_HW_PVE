@@ -135,6 +135,10 @@ protected:
 		void WalkingEffect(FVector FootPosition);
 	UFUNCTION(BlueprintImplementableEvent, Category = "Drop")
 	void SuppliesDrop(FVector Location);
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Pross")
+	class UPostProcessComponent* ProssComp;
+	UFUNCTION(BlueprintImplementableEvent, Category = "Pross")
+	void ProssCompChange();
 public:	
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
@@ -152,7 +156,7 @@ public:
 		void StartFire();
 	UFUNCTION(BlueprintCallable, Category = "Weapon")
 		void StopFire();
-	UPROPERTY(EditDefaultsOnly,Category="AI")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="AI")
 	bool IsAI;
 	UPROPERTY(BlueprintReadOnly, Category = "AI")
 	FVector DiedLocation;

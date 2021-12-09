@@ -15,6 +15,7 @@
 #include "UserPlayerState.h"
 #include "UserWeaponGrenade.h"
 #include "../Components/UserHealthComponent.h"
+#include "Components/PostProcessComponent.h"
 // Sets default values
 AUserCharacter::AUserCharacter()
 {
@@ -31,6 +32,9 @@ AUserCharacter::AUserCharacter()
 	SpringArmComp->SetupAttachment(RootComponent);
 	CameraComp = CreateDefaultSubobject<UCameraComponent>(TEXT("CameraComp"));
 	CameraComp->SetupAttachment(SpringArmComp);
+	ProssComp = CreateDefaultSubobject<UPostProcessComponent>(TEXT("ProssComp"));
+	ProssComp->SetupAttachment(RootComponent);
+	ProssComp->SetIsReplicated(true);
 
 	FollowCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("FollowCamera"));
 	SpringArmComp2 = CreateDefaultSubobject<USpringArmComponent>(TEXT("SpringArmComp2"));
@@ -79,7 +83,8 @@ void AUserCharacter::BeginPlay()
 	if(!IsAI)
 	SetUserName();
 	//this->OnTakeAnyDamage.AddDynamic(this,&AUserCharacter::HandleDamage);
-	
+	ProssComp->bUnbound = 1;
+	ProssComp->BlendRadius = 100;
 }
 
 // ÒÆ¶¯
@@ -298,8 +303,10 @@ void AUserCharacter::OnHealthChanged(UUserHealthComponent* OwnerHealthComp,AActo
 		if (!IsAI) {
 			AUserPlayerState* PS = Cast<AUserPlayerState>(GetPlayerState());
 			PS->AddDiedNumber(1);
+			ProssCompChange();
 		}
 		
+		//ProssComp->bEnabled = true;
 		bDied = true;
 		DiedLocation=GetMesh()->GetComponentLocation();
 		GetMovementComponent()->StopMovementImmediately();
